@@ -582,7 +582,7 @@ export async function createQRSocket(phoneNumber: string): Promise<{ sock: any; 
   const qrTimeout = setTimeout(() => rejectQR(new Error("QR not generated within 25s")), 25_000);
 
   const sock = makeWASocket({
-    version,
+    version: version as [number, number, number],
     printQRInTerminal: false,
     mobile: false,
     auth: state,
@@ -597,7 +597,7 @@ export async function createQRSocket(phoneNumber: string): Promise<{ sock: any; 
   (global as any).whatsappPairing?.add(cleanNumber);
   storeSession(cleanNumber, sock);
 
-  sock.ev.on("qr", (qr: string) => {
+  sock.ev.on("qr" as any, (qr: string) => {
     console.log(`[QR] QR received for ${cleanNumber}`);
     clearTimeout(qrTimeout);
     resolveQR(qr);
@@ -631,7 +631,7 @@ export async function createPairingSocket(phoneNumber: string): Promise<{ sock: 
   console.log(`[Pair] Creating socket for ${cleanNumber}...`);
 
   const sock = makeWASocket({
-    version,
+    version: version as [number, number, number],
     printQRInTerminal: false,
     mobile: false,
     auth: state,
@@ -685,7 +685,7 @@ export async function createPairingSocket(phoneNumber: string): Promise<{ sock: 
       done(undefined, new Error("Failed to get pairing code after 3 attempts"));
     };
 
-    sock.ev.on("qr", () => requestCode());
+    sock.ev.on("qr" as any, () => requestCode());
     sock.ev.on("connection.update", (update: any) => {
       if (update.qr) requestCode();
       if (update.connection === "close" && !codeRequested) {
@@ -737,7 +737,7 @@ export async function getWhatsAppSession(phoneNumber: string): Promise<any> {
   const { version } = await getBaileysVersion();
 
   const sock = makeWASocket({
-    version,
+    version: version as [number, number, number],
     printQRInTerminal: false,
     mobile: false,
     auth: state,
