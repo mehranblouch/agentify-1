@@ -58,8 +58,15 @@ function LiveClock() {
 }
 
 const CLINIC_RULES_TEMPLATE = `- Doctor / Specialist Name: "Dr. Ahmed Khan" (Specialty: "General Physician & Consultant")
+- Clinic / Doctor Contact Phone: "+92 300 1234567" (Office / Landline: "042-1234567")
+- Clinic Location: "Plot 12, Main Boulevard, Gulberg III, Lahore"
+- Working Hours: "Monday to Saturday: 9:00 AM - 5:00 PM (Sunday closed)"
 - Consultation Fee: "Rs. 1,000" (Payable at clinic reception via "Cash" or "Bank Transfer")
 - Available Treatments: "General Consultation", "Blood Pressure Check", "Diabetes & Sugar Test", "Routine Health Checkup", "Minor Wound Dressing"
+- Facility & Environment: "Clean and hygienic clinic, air-conditioned waiting area, disabled-access entrance"
+- Staff: "Receptionist, 2 nurses, 1 lab technician"
+- Test Coverage / Lab: "In-house lab for blood tests and sugar monitoring"
+- Social Media: Facebook: "facebook.com/yourclinic", Instagram: "instagram.com/yourclinic"
 - Appointment Confirmation: "Always ask for patient Full Name, Age, and Main Symptoms before confirming the slot."
 - Emergency Cases Policy: "If patient has severe pain, breathing difficulty, or emergency, reply: 'Please visit the nearest emergency room immediately!'"
 - Reschedule & Cancellation: "Patients can cancel or reschedule up to 2 hours before their scheduled time."

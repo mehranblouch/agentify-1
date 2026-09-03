@@ -7,12 +7,19 @@ import {
   Settings, Users, CalendarCheck, Send, Loader2, Save, Plus, Trash2, Check, X, Bell, MessageSquare, Sparkles
 } from "lucide-react";
 
-const EDUCATION_RULES_TEMPLATE = `- Principal / Head Name: "Prof. Muhammad Usman"
-- Office & Admission Timings: "Monday to Friday: 8:00 AM - 2:00 PM (Saturday: 8:00 AM - 12:00 PM)"
+const EDUCATION_RULES_TEMPLATE = `- School Name: "Al-Hadi Grammar School"
+- Address: "Street 12, Model Town, Lahore"
+- Timings: "Monday to Friday: 8:00 AM - 2:00 PM (Saturday: 8:00 AM - 12:00 PM)"
+- Contact / Office Phone: "042-1234567" (WhatsApp: "+92 300 1234567")
+- Environment & Sanitation: "Clean and hygienic campus, well-maintained washrooms, safe and secure premises"
+- Staff: "Principal: Prof. Muhammad Usman. Senior teachers available for Grade 1 to Grade 10."
+- Transport: "School van pick-and-drop available on routes covering Model Town, Gulberg, and Iqbal Town"
+- Facilities: "Air-conditioned classrooms, science lab, computer lab, library, playground, canteen"
+- Social Media: Facebook: "facebook.com/yourinstitute", Instagram: "instagram.com/yourinstitute"
 - Admissions Policy: "Admissions open for 'Grade 1 to Grade 10'. Entrance assessment and parent interview required."
-- Monthly Fee Structure: "Tuition fee is 'Rs. 5,000 per month'. Due date is the '10th of every month'. Late fee of 'Rs. 200' applies after due date."
+- Monthly Fee Structure: "Tuition fee 'Rs. 5,000 per month'. Due date '10th of every month'. Late fee 'Rs. 200'."
 - Student Leave & Absence: "Parents must notify absence on WhatsApp before '8:30 AM' stating student name, class, and reason."
-- Parent-Teacher Meetings: "Meetings can be scheduled for 'Saturdays between 9:00 AM - 12:00 PM' with 24 hours prior notice."
+- Parent-Teacher Meetings: "Meetings scheduled for 'Saturdays between 9:00 AM - 12:00 PM' with 24 hours prior notice."
 - Uniform & Discipline Code: "Complete school uniform is mandatory. Mobile phones and unauthorized items are strictly banned."
 - Communication Tone: "Respectful, encouraging, professional, and supportive with all parents and guardians."`;
 
