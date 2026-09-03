@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Local Business Website</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        header {
+            background-color: #ffffff;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        main {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h1 { color: #111827; }
+        p { line-height: 1.6; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>My Awesome Business</h1>
+        <p>This is a test website to check the Agentify Widget</p>
+    </header>
+
+    <main>
+        <h2>Welcome to our site!</h2>
+        <p>Look at the bottom right corner of this page. You should see the Agentify chat widget.</p>
+        <p>Try clicking it and sending a message to test if the API connection works.</p>
+        
+        <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+        <p>Scroll down...</p>
+        <br/><br/><br/><br/><br/><br/><br/><br/><br/><br/>
+    </main>
+
+    <!-- AGENTIFY WIDGET CODE -->
+    <script 
+        src="http://localhost:3000/widget.js"
+        data-token="agt_cityclinic_123"
+        data-business="City Medical Clinic"
+    ></script>
+
+</body>
+</html>

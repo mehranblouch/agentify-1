@@ -1,0 +1,12 @@
+{
+  "00000000-0000-0000-0000-000000000000": {
+    "clinic_name": "ali clinic ",
+    "consultation_fee": "Rs. 500",
+    "slot_duration_mins": 30,
+    "start_time": "09:00",
+    "end_time": "17:00",
+    "custom_rules": "be polite , saturday and sunday will be off . no concession . if one is full of appointments recoment other next day.",
+    "google_sheet_id": "appointments ",
+    "user_id": "00000000-0000-0000-0000-000000000000"
+  }
+}
