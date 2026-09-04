@@ -1,7 +1,31 @@
+import Groq from "groq-sdk";
 import { GoogleGenAI, createUserContent, createModelContent } from "@google/genai";
-import { getClinicSettings, getEducationSettings, getAllAppointments, type ClinicSettings } from "./sqlite-store";
+import { getClinicSettings, getEducationSettings, getAllAppointments, recordGroqKeyCall, type ClinicSettings } from "./sqlite-store";
 
 const GEMINI_MODEL = "gemini-3.8-flash";
+const GROQ_MODEL = "qwen/qwen3.8-27b";
+
+const RETRYABLE_STATUSES = [429, 403, 500, 502, 503, 504];
+
+function isRetryable(err: any): boolean {
+  if (RETRYABLE_STATUSES.includes(err?.status)) return true;
+  if (RETRYABLE_STATUSES.includes(err?.statusCode)) return true;
+  if (err?.message?.includes("rate_limit")) return true;
+  if (err?.message?.includes("quota")) return true;
+  if (err?.message?.includes("tokens")) return true;
+  if (err?.code === "ECONNRESET" || err?.code === "ETIMEDOUT") return true;
+  return false;
+}
+
+function getGroqKeys(): string[] {
+  return [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_KEY1,
+    process.env.GROQ_API_KEY_2,
+    process.env.GROQ_API_KEY_3,
+    process.env.GROQ_API_KEY_4,
+  ].filter(Boolean) as string[];
+}
 
 function getGeminiKeys(): string[] {
   return [
@@ -10,6 +34,43 @@ function getGeminiKeys(): string[] {
     process.env.GEMINI_API_KEY_2,
     process.env.GEMINI_API_KEY_3,
   ].filter(Boolean) as string[];
+}
+
+// Plain chat completion via Groq — NO tool calling
+async function tryGroqChat(
+  messages: { role: string; content: string }[],
+  model = GROQ_MODEL,
+  userId?: string
+): Promise<string> {
+  const keys = getGroqKeys();
+  if (keys.length === 0) throw new Error("No Groq API keys configured");
+  let lastError: any;
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const groq = new Groq({ apiKey: keys[i] });
+      const result = await groq.chat.completions.create({
+        messages: messages as any,
+        model,
+      });
+      const text = result.choices[0]?.message?.content;
+      if (text) {
+        try {
+          recordGroqKeyCall(i, `key ${i + 1}`, {
+            prompt_tokens: (result.usage as any)?.prompt_tokens,
+            completion_tokens: (result.usage as any)?.completion_tokens,
+            total_tokens: (result.usage as any)?.total_tokens,
+          }, userId);
+        } catch {}
+        return text;
+      }
+      throw new Error("Empty response from Groq");
+    } catch (err: any) {
+      lastError = err;
+      console.warn(`Groq key ${i + 1} failed: ${err?.message}`);
+      if (isRetryable(err) && i < keys.length - 1) continue;
+    }
+  }
+  throw lastError || new Error("All Groq API keys exhausted");
 }
 
 /**
@@ -509,16 +570,29 @@ MEETING BOOKING:
     content: msg.content,
   }));
 
+  const messages = [
+    { role: "system" as const, content: systemPrompt },
+    ...formattedHistory,
+    { role: "user" as const, content: message },
+  ];
+
   try {
-    // Gemini is the primary (and only) AI provider
-    const reply = await tryGeminiChat(systemPrompt, formattedHistory, message);
+    // Try Groq first (no tool calling — plain chat)
+    const reply = await tryGroqChat(messages, GROQ_MODEL, userId);
     return parseAIResponse(reply);
-  } catch (geminiError: any) {
-    console.error("Gemini failed.", geminiError?.message);
-    // Final fallback: simple offline message
-    const settings = businessType === "clinic" ? getClinicSettings(userId) : getEducationSettings(userId);
-    const fallbackReply = generateBusinessFallbackReply(message, settings, businessType);
-    return { message: fallbackReply };
+  } catch (groqError) {
+    console.warn("Groq failed, trying Gemini...", (groqError as any)?.message);
+    try {
+      // Try Gemini as fallback
+      const reply = await tryGeminiChat(systemPrompt, formattedHistory, message);
+      return parseAIResponse(reply);
+    } catch (geminiError: any) {
+      console.error("All AI providers failed.", geminiError?.message);
+      // Final fallback: simple offline message
+      const settings = businessType === "clinic" ? getClinicSettings(userId) : getEducationSettings(userId);
+      const fallbackReply = generateBusinessFallbackReply(message, settings, businessType);
+      return { message: fallbackReply };
+    }
   }
 }
 

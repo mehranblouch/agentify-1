@@ -19,7 +19,7 @@ export default function ConversationsPage() {
   
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [provider, setProvider] = useState("gemini");
+  const [provider, setProvider] = useState("groq");
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -82,8 +82,8 @@ export default function ConversationsPage() {
             onChange={(e) => setProvider(e.target.value)}
             className="bg-card border border-border rounded-lg py-2 px-3 text-sm outline-none focus:border-primary"
           >
-            <option value="gemini">Google (Gemini 3.8 Flash)</option>
             <option value="groq">Groq (Llama 3)</option>
+            <option value="gemini">Google (Gemini 3.8 Flash)</option>
           </select>
           <div className="relative w-64">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary" />
