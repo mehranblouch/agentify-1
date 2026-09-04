@@ -496,6 +496,9 @@ IMPORTANT RULES:
     const edu = getEducationSettings(userId);
     const instituteName = edu.institute_name || "our school";
 
+    const now = getNowParts("Asia/Karachi");
+    const tomorrowStr = addDays(now.date, 1);
+
     // Build a varied greeting hint for the first message
     const isFirstMessage = history.length === 0;
     const greetingHint = isFirstMessage
@@ -503,6 +506,12 @@ IMPORTANT RULES:
       : "";
 
     systemPrompt = `You are the AI assistant of "${instituteName}". You speak as if you ARE part of the school — use "we", "our", "us".
+
+CURRENT DATE & TIME (live — use this to understand words like "today", "tomorrow", "day after tomorrow", and weekday names):
+- Today's Date: ${now.date} (${now.day})
+- Current Time: ${now.time}
+- Tomorrow: ${tomorrowStr}
+- Always convert "today", "tomorrow", "day after tomorrow", "this week", and weekday names into exact real dates using the info above before answering any question about dates, timings, admissions, or events.
 
 HERE IS WHAT YOU KNOW:
 - School Name: ${edu.institute_name}
