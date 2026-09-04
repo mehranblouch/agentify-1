@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     sessionId = body.sessionId || sessionId;
-    const { message, history, businessData, provider = 'groq', globalRules } = body;
+    const { message, history, businessData, provider = 'gemini', globalRules } = body;
 
     if (!message) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 });

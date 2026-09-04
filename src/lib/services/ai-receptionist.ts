@@ -1,16 +1,5 @@
-import Groq from "groq-sdk";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getClinicSettings, getEducationSettings, getAllAppointments, recordGroqKeyCall, type ClinicSettings } from "./sqlite-store";
-
-function getGroqKeys(): string[] {
-  return [
-    process.env.GROQ_API_KEY,
-    process.env.GROQ_API_KEY1,
-    process.env.GROQ_API_KEY_2,
-    process.env.GROQ_API_KEY_3,
-    process.env.GROQ_API_KEY_4,
-  ].filter(Boolean) as string[];
-}
+import { getClinicSettings, getEducationSettings, getAllAppointments, type ClinicSettings } from "./sqlite-store";
 
 function getGeminiKeys(): string[] {
   return [
@@ -21,55 +10,10 @@ function getGeminiKeys(): string[] {
   ].filter(Boolean) as string[];
 }
 
-const RETRYABLE_STATUSES = [429, 403, 500, 502, 503, 504];
-
-function isRetryable(err: any): boolean {
-  if (RETRYABLE_STATUSES.includes(err?.status)) return true;
-  if (RETRYABLE_STATUSES.includes(err?.statusCode)) return true;
-  if (err?.message?.includes("rate_limit")) return true;
-  if (err?.message?.includes("quota")) return true;
-  if (err?.message?.includes("tokens")) return true;
-  if (err?.code === "ECONNRESET" || err?.code === "ETIMEDOUT") return true;
-  return false;
-}
-
-// Plain chat completion — NO tool calling
-async function tryGroqChat(
-  messages: { role: string; content: string }[],
-  model = "qwen/qwen3.8-27b",
-  userId?: string
-): Promise<string> {
-  const keys = getGroqKeys();
-  if (keys.length === 0) throw new Error("No Groq API keys configured");
-  let lastError: any;
-  for (let i = 0; i < keys.length; i++) {
-    try {
-      const groq = new Groq({ apiKey: keys[i] });
-      const result = await groq.chat.completions.create({
-        messages: messages as any,
-        model,
-      });
-      const text = result.choices[0]?.message?.content;
-      if (text) {
-        try {
-          recordGroqKeyCall(i, `key ${i + 1}`, {
-            prompt_tokens: (result.usage as any)?.prompt_tokens,
-            completion_tokens: (result.usage as any)?.completion_tokens,
-            total_tokens: (result.usage as any)?.total_tokens,
-          }, userId);
-        } catch {}
-        return text;
-      }
-      throw new Error("Empty response from Groq");
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`Groq key ${i + 1} failed: ${err?.message}`);
-      if (isRetryable(err) && i < keys.length - 1) continue;
-    }
-  }
-  throw lastError || new Error("All Groq API keys exhausted");
-}
-
+/**
+ * Chat completion using Google Gemini (the primary AI provider).
+ * Rotates through configured API keys.
+ */
 async function tryGeminiChat(
   systemPrompt: string,
   formattedHistory: { role: string; content: string }[],
@@ -78,10 +22,11 @@ async function tryGeminiChat(
   const keys = getGeminiKeys();
   if (keys.length === 0) throw new Error("No valid Gemini API keys configured");
 
+  let lastError: any;
   for (const apiKey of keys) {
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
       const chat = model.startChat({
         history: [
           { role: "user", parts: [{ text: `SYSTEM INSTRUCTIONS:\n${systemPrompt}` }] },
@@ -96,10 +41,11 @@ async function tryGeminiChat(
       const text = result.response.text();
       if (text) return text;
     } catch (err: any) {
+      lastError = err;
       console.warn(`Gemini key failed: ${err?.message}`);
     }
   }
-  throw new Error("All Gemini keys exhausted");
+  throw lastError || new Error("All Gemini keys exhausted");
 }
 
 export interface AIResponse {
@@ -409,6 +355,11 @@ export async function processReceptionistAI(
 
     systemPrompt = `You are the personal receptionist of "${clinicName}". You talk like a real human — warm, friendly, and natural. You are NOT a robot. Use "we", "our", "us" as if you work here.
 
+LANGUAGE RULE:
+- Reply in the SAME language the patient writes in. If they write in Urdu, reply in Urdu. If they write in Roman Urdu (Urdu written in English letters, e.g. "kya clinic mein AC hai?"), reply in Roman Urdu. If they write in English, reply in English. If they mix languages, mirror their mix.
+- Keep the warm, human tone in whatever language you use, with correct spelling and grammar.
+- Dates, times, booking references (e.g. APT-XXXXXX) and fees can stay in English/numbers even inside an Urdu reply, so the details are clear.
+
 CURRENT DATE & TIME (live — use this for all slot decisions):
 - Today's Date: ${now.date} (${now.day})
 - Current Time: ${now.time}
@@ -507,6 +458,11 @@ IMPORTANT RULES:
 
     systemPrompt = `You are the AI assistant of "${instituteName}". You speak as if you ARE part of the school — use "we", "our", "us".
 
+LANGUAGE RULE:
+- Reply in the SAME language the person writes in. If they write in Urdu, reply in Urdu. If they write in Roman Urdu (Urdu written in English letters, e.g. "kya school mein AC rooms hain?"), reply in Roman Urdu. If they write in English, reply in English. If they mix languages, mirror their mix.
+- Keep the warm, human tone in whatever language you use, with correct spelling and grammar.
+- Dates, times and booking details can stay in English/numbers even inside an Urdu reply, so the details are clear.
+
 CURRENT DATE & TIME (live — use this to understand words like "today", "tomorrow", "day after tomorrow", and weekday names):
 - Today's Date: ${now.date} (${now.day})
 - Current Time: ${now.time}
@@ -547,29 +503,16 @@ MEETING BOOKING:
     content: msg.content,
   }));
 
-  const messages = [
-    { role: "system" as const, content: systemPrompt },
-    ...formattedHistory,
-    { role: "user" as const, content: message },
-  ];
-
   try {
-    // Try Groq first (no tool calling — plain chat)
-    const reply = await tryGroqChat(messages, "qwen/qwen3.8-27b", userId);
+    // Gemini is the primary (and only) AI provider
+    const reply = await tryGeminiChat(systemPrompt, formattedHistory, message);
     return parseAIResponse(reply);
-  } catch (groqError) {
-    console.warn("Groq failed, trying Gemini...", (groqError as any)?.message);
-    try {
-      // Try Gemini as fallback
-      const reply = await tryGeminiChat(systemPrompt, formattedHistory, message);
-      return parseAIResponse(reply);
-    } catch (geminiError: any) {
-      console.error("All AI providers failed.", geminiError?.message);
-      // Final fallback: simple offline message
-      const settings = businessType === "clinic" ? getClinicSettings(userId) : getEducationSettings(userId);
-      const fallbackReply = generateBusinessFallbackReply(message, settings, businessType);
-      return { message: fallbackReply };
-    }
+  } catch (geminiError: any) {
+    console.error("Gemini failed.", geminiError?.message);
+    // Final fallback: simple offline message
+    const settings = businessType === "clinic" ? getClinicSettings(userId) : getEducationSettings(userId);
+    const fallbackReply = generateBusinessFallbackReply(message, settings, businessType);
+    return { message: fallbackReply };
   }
 }
 

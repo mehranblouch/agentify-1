@@ -70,7 +70,7 @@ async function tryGeminiText(systemPrompt: string, formattedHistory: any[], mess
   for (let i = 0; i < keys.length; i++) {
     try {
       const genAI = new GoogleGenerativeAI(keys[i]);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
       const chat = model.startChat({
         history: [
           { role: "user", parts: [{ text: `SYSTEM INSTRUCTIONS: ${systemPrompt}` }] },
@@ -99,7 +99,7 @@ async function tryGeminiText(systemPrompt: string, formattedHistory: any[], mess
 export async function getAIResponse(
   message: string,
   history: any[] = [],
-  provider: string = 'groq',
+  provider: string = 'gemini',
   businessData?: any,
   sessionId?: string,
   globalRulesOverrides?: { knowledge?: string, commands?: string }
@@ -181,12 +181,8 @@ INSTRUCTIONS:
         reply = await tryGeminiText(systemPrompt, formattedHistory, message);
       }
     } else {
-      try {
-        reply = await tryGeminiText(systemPrompt, formattedHistory, message);
-      } catch (geminiErr) {
-        console.warn("Gemini failed, falling back to Groq:", (geminiErr as any)?.message);
-        reply = await tryGroqText(messages, "groq/compound");
-      }
+      // Gemini is the primary (and preferred) provider
+      reply = await tryGeminiText(systemPrompt, formattedHistory, message);
     }
   } catch (err: any) {
     console.error("All AI providers failed:", err.message);
