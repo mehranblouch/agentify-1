@@ -84,7 +84,8 @@ async function tryGeminiText(systemPrompt: string, formattedHistory: any[], mess
         config: { systemInstruction: systemPrompt },
       });
       if (i > 0) console.log(`Gemini ${keyLabels[i]} succeeded after ${keyLabels[0]} hit a limit`);
-      return result.text;
+      const text = result.text;
+      if (text) return text;
     } catch (err: any) {
       lastError = err;
       const code = err?.status || err?.statusCode || err?.code || "";
