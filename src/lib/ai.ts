@@ -1,5 +1,5 @@
 import Groq from "groq-sdk";
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI, createUserContent, createModelContent } from '@google/genai';
 import { recordGroqKeyCall } from "./services/sqlite-store";
 const RETRYABLE_STATUSES = [429, 403, 500, 502, 503, 504];
 
@@ -66,24 +66,25 @@ async function tryGeminiText(systemPrompt: string, formattedHistory: any[], mess
   const keys = getGeminiKeys();
   const keyLabels = ["primary", "key 2", "key 3"].slice(0, keys.length);
   if (keys.length === 0) throw new Error("No Gemini API keys configured");
+
+  const contents: any[] = formattedHistory.map((msg: any) =>
+    msg.role === "assistant"
+      ? createModelContent(String(msg.content))
+      : createUserContent(String(msg.content))
+  );
+  contents.push(createUserContent(message));
+
   let lastError: any;
   for (let i = 0; i < keys.length; i++) {
     try {
-      const genAI = new GoogleGenerativeAI(keys[i]);
-      const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
-      const chat = model.startChat({
-        history: [
-          { role: "user", parts: [{ text: `SYSTEM INSTRUCTIONS: ${systemPrompt}` }] },
-          { role: "model", parts: [{ text: "Understood. I will follow all instructions precisely." }] },
-          ...formattedHistory.map((msg: any) => ({
-            role: (msg.role === 'assistant' ? 'model' : 'user') as "model" | "user",
-            parts: [{ text: String(msg.content) }]
-          }))
-        ],
+      const ai = new GoogleGenAI({ apiKey: keys[i] });
+      const result = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents,
+        config: { systemInstruction: systemPrompt },
       });
-      const result = await chat.sendMessage(message);
       if (i > 0) console.log(`Gemini ${keyLabels[i]} succeeded after ${keyLabels[0]} hit a limit`);
-      return result.response.text();
+      return result.text;
     } catch (err: any) {
       lastError = err;
       const code = err?.status || err?.statusCode || err?.code || "";

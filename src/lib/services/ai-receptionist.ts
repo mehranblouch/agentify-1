@@ -1,5 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI, createUserContent, createModelContent } from "@google/genai";
 import { getClinicSettings, getEducationSettings, getAllAppointments, type ClinicSettings } from "./sqlite-store";
+
+const GEMINI_MODEL = "gemini-3.8-flash";
 
 function getGeminiKeys(): string[] {
   return [
@@ -12,7 +14,7 @@ function getGeminiKeys(): string[] {
 
 /**
  * Chat completion using Google Gemini (the primary AI provider).
- * Rotates through configured API keys.
+ * Uses the @google/genai SDK and rotates through configured API keys.
  */
 async function tryGeminiChat(
   systemPrompt: string,
@@ -22,23 +24,27 @@ async function tryGeminiChat(
   const keys = getGeminiKeys();
   if (keys.length === 0) throw new Error("No valid Gemini API keys configured");
 
+  // Build turn-based contents: history (excluding system, injected via config)
+  // plus the current user message.
+  const contents: any[] = formattedHistory.map((msg) =>
+    msg.role === "assistant"
+      ? createModelContent(msg.content)
+      : createUserContent(msg.content)
+  );
+  contents.push(createUserContent(message));
+
   let lastError: any;
   for (const apiKey of keys) {
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
-      const chat = model.startChat({
-        history: [
-          { role: "user", parts: [{ text: `SYSTEM INSTRUCTIONS:\n${systemPrompt}` }] },
-          { role: "model", parts: [{ text: "Understood. I will act strictly according to these official business instructions." }] },
-          ...formattedHistory.map((msg) => ({
-            role: msg.role === "assistant" ? "model" as const : "user" as const,
-            parts: [{ text: msg.content }],
-          })),
-        ],
+      const ai = new GoogleGenAI({ apiKey });
+      const result = await ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents,
+        config: {
+          systemInstruction: systemPrompt,
+        },
       });
-      const result = await chat.sendMessage(message);
-      const text = result.response.text();
+      const text = result.text;
       if (text) return text;
     } catch (err: any) {
       lastError = err;

@@ -12,6 +12,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@google/genai": "^2.21.0",
     "@google/generative-ai": "^0.24.1",
     "@types/uuid": "^10.0.0",
     "@whiskeysockets/baileys": "^7.0.0-rc14",
