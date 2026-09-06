@@ -1,11 +1,14 @@
 import { NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import path from "path";
+import fs from "fs";
 import { requireAdminSession } from "@/lib/auth";
 
-const DB_PATH = path.join(process.cwd(), "data", "clinic.sqlite");
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
+const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, "clinic.sqlite");
 
 function getDb() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   return new Database(DB_PATH);
 }
 

@@ -60,7 +60,7 @@ export default function AdminPage() {
 
   const handleRestore = async (file: File) => {
     try {
-      const res = await fetch("/api/admin/restore-db", {
+      const res = await fetch("/api/admin/backup", {
         method: "POST",
         credentials: "same-origin",
         body: file,
