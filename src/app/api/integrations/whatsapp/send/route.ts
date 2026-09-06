@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { getWhatsAppSession } from "@/lib/whatsapp";
-import { logMessage } from "@/lib/services/sqlite-store";
+import { logMessage, getUserByWhatsAppNumber } from "@/lib/services/sqlite-store";
+import { requireSession } from "@/lib/auth";
 
 // POST: Send a single outbound WhatsApp message via Baileys
 // Called by the Workflow Executor for bulk campaigns
 export async function POST(req: Request) {
   try {
+    const guarded = requireSession(req);
+    if ("error" in guarded) return guarded.error;
+    const { userId } = guarded.session;
+
     const { phone, message, fromNumber } = await req.json();
 
     if (!phone || !message) {
@@ -35,11 +40,17 @@ export async function POST(req: Request) {
     const cleanPhone = phone.replace(/\D/g, "");
     const jid = `${cleanPhone}@s.whatsapp.net`;
 
-    // Look up userId from SQLite (works after server restart)
+    // Ownership: only the business that owns the connected number may send using it.
     const cleanFrom = sessionPhone.replace(/\D/g, "");
-    const { getUserByWhatsAppNumber } = await import("@/lib/services/sqlite-store");
     const biz = getUserByWhatsAppNumber(cleanFrom);
-    const userId = biz?.userId || "";
+    const ownerUserId = biz?.userId || "";
+    const effectiveUserId = userId ?? ownerUserId;
+    if (ownerUserId && userId && ownerUserId !== userId) {
+      return NextResponse.json({ error: "You are not authorized to send on this number" }, { status: 403 });
+    }
+    if (!userId && (!ownerUserId || !effectiveUserId)) {
+      return NextResponse.json({ error: "No userId provided" }, { status: 403 });
+    }
 
     console.log(`📤 Sending via Baileys to ${cleanPhone}: "${message.substring(0, 50)}..."`);
 
@@ -56,7 +67,7 @@ export async function POST(req: Request) {
       
       await sock.sendPresenceUpdate("paused", jid);
 
-      if (userId) logMessage(userId, "outgoing", cleanPhone, message);
+      if (effectiveUserId) logMessage(effectiveUserId, "outgoing", cleanPhone, message);
 
       console.log(`✅ [Baileys] Message sent to ${cleanPhone} - Message ID: ${result.key?.id}`);
 
@@ -77,7 +88,7 @@ export async function POST(req: Request) {
         const retryResult = await sock.sendMessage(jid, { text: message });
         await sock.sendPresenceUpdate("paused", jid);
         
-        if (userId) logMessage(userId, "outgoing", cleanPhone, message);
+        if (effectiveUserId) logMessage(effectiveUserId, "outgoing", cleanPhone, message);
         
         console.log(`✅ [Baileys Retry] Message sent to ${cleanPhone}`);
         return NextResponse.json({ 

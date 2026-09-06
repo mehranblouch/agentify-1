@@ -29,6 +29,7 @@ type KeyUsage = {
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [activeTab, setActiveTab] = useState<"businesses" | "keys">("businesses");
   const [clinics, setClinics] = useState<Business[]>([]);
@@ -41,14 +42,14 @@ export default function AdminPage() {
 
   const loadKeyUsage = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/groq-usage");
+      const res = await fetch("/api/admin/groq-usage", { credentials: "same-origin" });
       const data = await res.json();
       if (data.success) setKeyUsage(data.keys);
     } catch {}
   }, []);
 
   const loadBusinesses = useCallback(async () => {
-    const res = await fetch("/api/admin/businesses");
+    const res = await fetch("/api/admin/businesses", { credentials: "same-origin" });
     const data = await res.json();
     if (!data.success) return;
     setClinics(data.businesses.filter((b: Business) => b.business_type === "clinic"));
@@ -56,8 +57,16 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    loadBusinesses();
-    loadKeyUsage();
+    fetch("/api/admin/me", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (res.status === 200) {
+          setIsAuthenticated(true);
+          loadBusinesses();
+          loadKeyUsage();
+        }
+      })
+      .catch(() => {})
+      .finally(() => setAuthChecked(true));
   }, [loadBusinesses, loadKeyUsage]);
 
   const handleResetKey = async (keyIndex: number) => {
@@ -145,6 +154,36 @@ export default function AdminPage() {
 
   const selectedBusiness = [...clinics, ...schools].find((b) => b.id === selected) || null;
 
+  const handleAdminLogin = async () => {
+    if (!passwordInput) return alert("Please enter the admin password.");
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: passwordInput }),
+        credentials: "same-origin",
+      });
+      const data = await res.json();
+      if (res.status === 200) {
+        setIsAuthenticated(true);
+        loadBusinesses();
+        loadKeyUsage();
+      } else {
+        alert(data.error || "Incorrect password");
+      }
+    } catch {
+      alert("Failed to authenticate. Please try again.");
+    }
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
@@ -158,18 +197,12 @@ export default function AdminPage() {
             value={passwordInput}
             onChange={(e) => setPasswordInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                if (passwordInput === "mmkrb4747") setIsAuthenticated(true);
-                else alert("Incorrect password");
-              }
+              if (e.key === "Enter") handleAdminLogin();
             }}
           />
           <button
             className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
-            onClick={() => {
-              if (passwordInput === "mmkrb4747") setIsAuthenticated(true);
-              else alert("Incorrect password");
-            }}
+            onClick={handleAdminLogin}
           >
             Unlock
           </button>

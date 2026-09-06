@@ -91,55 +91,73 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, []);
 
   useEffect(() => {
-    // Auth check via sessionStorage
-    const userStr = sessionStorage.getItem("agentify_current_user");
-    if (!userStr) {
-      router.replace("/login");
-      return;
-    }
-
-    try {
-      const user = JSON.parse(userStr);
-      if (user.businessType === "education") {
-        setNavItems([
-          { name: "School Hub", href: "/dashboard/education", icon: LayoutDashboard },
-          { name: "Students", href: "/dashboard/education?tab=students", icon: Users },
-          { name: "Attendance", href: "/dashboard/education?tab=attendance", icon: CalendarCheck },
-          { name: "Broadcast", href: "/dashboard/education?tab=broadcast", icon: Send },
-        ]);
-        // Redirect to school dashboard if on wrong page
-        if (pathname === "/dashboard") {
-          router.replace("/dashboard/education");
+    // Auth check via server-side session cookie
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (res.status === 401) {
+          sessionStorage.removeItem("agentify_current_user");
+          router.replace("/login");
           return;
         }
-      } else if (user.businessType === "clinic") {
-        setNavItems([
-          { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-          { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
-        ]);
-        // Redirect to clinic dashboard if on school page
-        if (pathname === "/dashboard/education") {
-          router.replace("/dashboard");
+        const data = await res.json();
+        if (!data.success) {
+          sessionStorage.removeItem("agentify_current_user");
+          router.replace("/login");
           return;
         }
-      } else {
-        // No business type set yet — redirect to onboarding
-        if (pathname !== "/onboarding") {
-          router.replace("/onboarding");
-          return;
+        // Keep sessionStorage in sync for UI display
+        if (data.business_type !== undefined) {
+          const existing = sessionStorage.getItem("agentify_current_user");
+          if (existing) {
+            try {
+              const u = JSON.parse(existing);
+              u.businessType = u.businessType || data.business_type;
+              sessionStorage.setItem("agentify_current_user", JSON.stringify(u));
+            } catch {}
+          }
         }
-      }
-      setIsLoading(false);
-    } catch {
-      router.replace("/login");
-    }
+        if (data.business_type === "education") {
+          setNavItems([
+            { name: "School Hub", href: "/dashboard/education", icon: LayoutDashboard },
+            { name: "Students", href: "/dashboard/education?tab=students", icon: Users },
+            { name: "Attendance", href: "/dashboard/education?tab=attendance", icon: CalendarCheck },
+            { name: "Broadcast", href: "/dashboard/education?tab=broadcast", icon: Send },
+          ]);
+          if (pathname === "/dashboard") {
+            router.replace("/dashboard/education");
+            return;
+          }
+        } else if (data.business_type === "clinic") {
+          setNavItems([
+            { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+            { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
+          ]);
+          if (pathname === "/dashboard/education") {
+            router.replace("/dashboard");
+            return;
+          }
+        } else {
+          if (pathname !== "/onboarding") {
+            router.replace("/onboarding");
+            return;
+          }
+        }
+        setIsLoading(false);
+      })
+      .catch(() => {
+        sessionStorage.removeItem("agentify_current_user");
+        router.replace("/login");
+      });
   }, [router, pathname]);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {}
     sessionStorage.removeItem("agentify_current_user");
     toast.success("Logged out successfully");
     router.replace("/login");

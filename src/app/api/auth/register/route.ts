@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserByEmail, createUser } from "@/lib/services/sqlite-store";
+import { hashPassword, issueSession, setSessionCookie } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
@@ -50,15 +51,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = createUser({ name, email, password });
+    const user = createUser({ name, email, password: hashPassword(password) });
 
-    return NextResponse.json({
+    const token = issueSession(user.id, "user");
+    const res = NextResponse.json({
       success: true,
       id: user.id,
       email: user.email,
       name: user.name,
       business_type: user.business_type,
     });
+    setSessionCookie(res, token);
+    return res;
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err?.message || String(err) },

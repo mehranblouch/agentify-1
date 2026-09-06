@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { updateUserBusiness, getUserById } from "@/lib/services/sqlite-store";
 import { upsertDoctorByEmail } from "@/lib/localClinic";
+import { requireSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { userId, businessType } = body;
+    const guarded = requireSession(req);
+    if ("error" in guarded) return guarded.error;
+    const userId = guarded.session.userId;
+    if (!userId) return NextResponse.json({ success: false, error: "Not allowed" }, { status: 403 });
 
-    if (!userId || !businessType) {
+    const body = await req.json();
+    const { businessType } = body;
+
+    if (!businessType) {
       return NextResponse.json(
-        { success: false, error: "Missing userId or businessType" },
+        { success: false, error: "Missing businessType" },
         { status: 400 }
       );
     }

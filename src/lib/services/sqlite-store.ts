@@ -16,6 +16,10 @@ export type User = {
   email: string;
   name: string;
   password: string;
+  password_hash?: string | null;
+  failed_attempts?: number;
+  locked_until?: string | null;
+  last_login?: string | null;
   business_type: "clinic" | "education" | null;
   created_at: string;
 };
@@ -311,6 +315,47 @@ function getDb() {
   } catch (_) {}
 
   try {
+    const info = db.prepare("PRAGMA table_info(users)").all() as any[];
+    if (!info.some(r => r.name === "failed_attempts")) {
+      db.prepare("ALTER TABLE users ADD COLUMN failed_attempts INTEGER DEFAULT 0").run();
+    }
+    if (!info.some(r => r.name === "locked_until")) {
+      db.prepare("ALTER TABLE users ADD COLUMN locked_until TEXT").run();
+    }
+    if (!info.some(r => r.name === "last_login")) {
+      db.prepare("ALTER TABLE users ADD COLUMN last_login TEXT").run();
+    }
+  } catch (_) {}
+
+  // Login rate limiting (per email + IP) survives restarts
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS login_attempts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      ip TEXT NOT NULL DEFAULT '',
+      attempted_at TEXT NOT NULL
+    )`
+  ).run();
+
+  // Revocable server-side sessions (httpOnly cookie token -> user/role)
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS sessions (
+      token_hash TEXT PRIMARY KEY,
+      user_id TEXT,
+      role TEXT DEFAULT 'user',
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL
+    )`
+  ).run();
+
+  try {
+    const ui = db.prepare("PRAGMA table_info(users)").all() as any[];
+    if (!ui.some(r => r.name === "password_hash")) {
+      db.prepare("ALTER TABLE users ADD COLUMN password_hash TEXT").run();
+    }
+  } catch (_) {}
+
+  try {
     const info = db.prepare("PRAGMA table_info(clinic_settings)").all() as any[];
     if (!info.some(r => r.name === "daily_quota")) {
       db.prepare("ALTER TABLE clinic_settings ADD COLUMN daily_quota INTEGER DEFAULT 10").run();
@@ -379,6 +424,129 @@ export function getPausedBusinessIds(): Set<string> {
   const database = getDb();
   const rows = database.prepare("SELECT id FROM users WHERE paused = 1").all() as any[];
   return new Set(rows.map((r: any) => r.id));
+}
+
+// ─────────────────────────────────────────────
+// Login rate limiting + sessions
+// ─────────────────────────────────────────────
+
+export function recordFailedAttempt(email: string, ip: string): number {
+  const database = getDb();
+  const now = new Date().toISOString();
+  const emailLower = String(email || "").toLowerCase().trim();
+  database
+    .prepare(`INSERT INTO login_attempts (email, ip, attempted_at) VALUES (?, ?, ?)`)
+    .run(emailLower, ip || "", now);
+
+  database
+    .prepare(`UPDATE users SET failed_attempts = failed_attempts + 1 WHERE email = ?`)
+    .run(emailLower);
+
+  // Count recent attempts (15-minute window) for this email+ip
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const row = database
+    .prepare(
+      `SELECT COUNT(*) as cnt FROM login_attempts
+       WHERE email = ? AND ip = ? AND attempted_at >= ?`
+    )
+    .get(emailLower, ip || "", cutoff) as any;
+  return row?.cnt || 0;
+}
+
+export function getFailedAttempts(email: string): number {
+  const database = getDb();
+  const row = database
+    .prepare("SELECT failed_attempts, locked_until FROM users WHERE email = ?")
+    .get(String(email || "").toLowerCase().trim()) as any;
+  if (!row) return 0;
+  if (row.locked_until && new Date(row.locked_until).getTime() > Date.now()) return 999; // still locked
+  return row.failed_attempts || 0;
+}
+
+export function lockAccount(email: string, minutes: number): void {
+  const database = getDb();
+  const lockedUntil = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+  database
+    .prepare("UPDATE users SET locked_until = ?, failed_attempts = 0 WHERE email = ?")
+    .run(lockedUntil, String(email || "").toLowerCase().trim());
+}
+
+export function clearFailedAttempts(email: string): void {
+  const database = getDb();
+  const emailLower = String(email || "").toLowerCase().trim();
+  database
+    .prepare("UPDATE users SET failed_attempts = 0, locked_until = NULL, last_login = ? WHERE email = ?")
+    .run(new Date().toISOString(), emailLower);
+  database.prepare("DELETE FROM login_attempts WHERE email = ?").run(emailLower);
+}
+
+export function setLastLogin(userId: string): void {
+  const database = getDb();
+  database
+    .prepare("UPDATE users SET last_login = ? WHERE id = ?")
+    .run(new Date().toISOString(), userId);
+}
+
+export function updatePasswordHash(email: string, hash: string): void {
+  const database = getDb();
+  database
+    .prepare("UPDATE users SET password_hash = ? WHERE email = ?")
+    .run(hash, String(email || "").toLowerCase().trim());
+}
+
+export function createSession(
+  tokenHash: string,
+  userId: string | null,
+  role: string,
+  ttlMs: number
+): void {
+  const database = getDb();
+  const now = Date.now();
+  database
+    .prepare(
+      `INSERT INTO sessions (token_hash, user_id, role, created_at, expires_at)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    .run(tokenHash, userId, role, new Date(now).toISOString(), new Date(now + ttlMs).toISOString());
+}
+
+export function getSession(tokenHash: string): {
+  token_hash: string;
+  user_id: string | null;
+  role: string;
+  created_at: string;
+  expires_at: string;
+} | null {
+  const database = getDb();
+  const row = database
+    .prepare(
+      `SELECT * FROM sessions WHERE token_hash = ?
+       AND expires_at > ?`
+    )
+    .get(tokenHash, new Date().toISOString()) as any;
+  return row || null;
+}
+
+export function destroySession(tokenHash: string): void {
+  const database = getDb();
+  database.prepare("DELETE FROM sessions WHERE token_hash = ?").run(tokenHash);
+}
+
+export function destroyAllUserSessions(userId: string): void {
+  const database = getDb();
+  database.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+}
+
+export function getTotalFailedAttemptsForIp(ip: string): number {
+  const database = getDb();
+  const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const row = database
+    .prepare(
+      `SELECT COUNT(*) as cnt FROM login_attempts
+       WHERE ip = ? AND attempted_at >= ?`
+    )
+    .get(ip || "", cutoff) as any;
+  return row?.cnt || 0;
 }
 
 // ─────────────────────────────────────────────

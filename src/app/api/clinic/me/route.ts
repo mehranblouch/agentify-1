@@ -12,6 +12,7 @@ import {
   getUserById,
   type User,
 } from "@/lib/services/sqlite-store";
+import { requireSession } from "@/lib/auth";
 
 async function getDoctorIdFromCookie(): Promise<string | null> {
   const cookieStore = await cookies();
@@ -21,7 +22,7 @@ async function getDoctorIdFromCookie(): Promise<string | null> {
 // Resolve the doctor for email/password users by looking up their user
 // record (stored in localStorage as agentify_current_user) and matching on
 // email. Google OAuth users keep being resolved via the clinic_doctor_id cookie.
-async function resolveDoctor(userId?: string): Promise<{
+async function resolveDoctor(userId: string): Promise<{
   existing: ClinicDoctor | null;
   user: User | null;
 }> {
@@ -30,8 +31,6 @@ async function resolveDoctor(userId?: string): Promise<{
     const doctor = await getDoctorByIdLocal(doctorId);
     return { existing: doctor, user: null };
   }
-
-  if (!userId) return { existing: null, user: null };
 
   const user = getUserById(userId);
   if (!user) return { existing: null, user: null };
@@ -42,16 +41,18 @@ async function resolveDoctor(userId?: string): Promise<{
 
 export async function GET(req: Request) {
   try {
+    const guarded = requireSession(req);
+    if ("error" in guarded) return guarded.error;
+    const sessionUserId = guarded.session.userId;
+
     const doctorId = await getDoctorIdFromCookie();
     if (doctorId) {
       const doctor = await getDoctorByIdLocal(doctorId);
       return NextResponse.json({ doctor }, { status: 200 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId") || undefined;
-    if (userId) {
-      const user = getUserById(userId);
+    if (sessionUserId) {
+      const user = getUserById(sessionUserId);
       const doctor = user ? await getDoctorByEmailLocal(user.email) : null;
       return NextResponse.json({ doctor }, { status: 200 });
     }
@@ -64,8 +65,14 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const guarded = requireSession(req);
+    if ("error" in guarded) return guarded.error;
+    const sessionUserId = guarded.session.userId;
+    if (!sessionUserId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+    const userId = sessionUserId;
     const body = await req.json();
-    const { existing, user } = await resolveDoctor(body.user_id);
+    const { existing, user } = await resolveDoctor(userId);
 
     if (!existing && !user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -82,10 +89,10 @@ export async function POST(req: Request) {
       sheet_columns: existing?.sheet_columns ?? ["name", "phone", "date"],
     });
 
-    // Sync relevant fields to clinic_settings using user_id from the client
+    // Sync relevant fields to clinic_settings using the authenticated user_id
     const infoBox = body.info_box ?? existing?.info_box ?? {};
     saveClinicSettings({
-      user_id: body.user_id || user?.id || existing?.id || "default",
+      user_id: userId,
       clinic_name: body.name || existing?.name || user?.name || "",
       consultation_fee: infoBox.fee || "",
       daily_quota: infoBox.daily_appointments || 10,
@@ -102,8 +109,14 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
+    const guarded = requireSession(req);
+    if ("error" in guarded) return guarded.error;
+    const sessionUserId = guarded.session.userId;
+    if (!sessionUserId) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
+    const userId = sessionUserId;
     const body = await req.json().catch(() => ({}));
-    const { existing, user } = await resolveDoctor(body.user_id);
+    const { existing, user } = await resolveDoctor(userId);
 
     if (!existing && !user) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });

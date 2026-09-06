@@ -40,7 +40,7 @@ async function tryGroqText(messages: any[], model: string): Promise<string> {
   for (let i = 0; i < keys.length; i++) {
     try {
       const groq = new Groq({ apiKey: keys[i] });
-      const completion = await groq.chat.completions.create({ messages, model } as any);
+      const completion = await groq.chat.completions.create({ messages, model, max_tokens: 512 } as any);
       if (i > 0) console.log(`Groq ${keyLabels[i]} succeeded after ${keyLabels[0]} hit a limit`);
       try {
         recordGroqKeyCall(i, keyLabels[i], {

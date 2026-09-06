@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { getWhatsAppSession, isSessionRegistered, isSocketConnected, getCanonicalSessionNumber } from "@/lib/whatsapp";
+import { requireSession } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
+    const guarded = requireSession(request);
+    if ("error" in guarded) return guarded.error;
+
     const body = await request.json().catch(() => ({}));
     const { phoneNumber } = body as { phoneNumber?: string };
 

@@ -44,6 +44,9 @@ data/
 *.log
 scratch/
 
+# legacy local clinic data (contains live user data — do not commit)
+doctor_settings.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

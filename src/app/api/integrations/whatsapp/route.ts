@@ -1,20 +1,28 @@
 import { NextResponse } from "next/server";
-import { createPairingSocket, normalizePhoneNumber, getCanonicalSessionNumber } from "@/lib/whatsapp";
+import { createPairingSocket, normalizePhoneNumber } from "@/lib/whatsapp";
 import { assignWhatsAppNumberToBusiness } from "@/lib/services/sqlite-store";
+import { requireSession } from "@/lib/auth";
 
 export const maxDuration = 60;
 
 /**
  * POST /api/integrations/whatsapp
- * Body: { phoneNumber, userId?, businessType? }
+ * Body: { phoneNumber, businessType? }
  * Returns { success: true, pairingCode }
  */
 export async function POST(request: Request) {
   try {
+    const guarded = requireSession(request);
+    if ("error" in guarded) return guarded.error;
+    const userId = guarded.session.userId;
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Not allowed" }, { status: 403 });
+    }
+
     const body = await request.json().catch(() => ({}));
-    const { phoneNumber, userId, businessType } = body as {
+    const { phoneNumber, businessType } = body as {
       phoneNumber?: string;
-      userId?: string;
       businessType?: string;
     };
 
@@ -27,14 +35,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Invalid phone number" }, { status: 400 });
     }
 
-    // Persist phone number in SQLite so business lookup works after restart
-    if (userId) {
-      const bType = (businessType as "clinic" | "education") || "clinic";
-      assignWhatsAppNumberToBusiness(userId, bType, cleanNumber);
-      console.log(`[Pair Route] Persisted whatsapp_number=${cleanNumber} for userId=${userId} type=${bType}`);
-    }
+    // Persist phone number in SQLite so business lookup works after restart.
+    // userId always comes from the authenticated session, never the request body.
+    const bType = (businessType as "clinic" | "education") || "clinic";
+    assignWhatsAppNumberToBusiness(userId, bType, cleanNumber);
+    console.log(`[Pair Route] Persisted whatsapp_number=${cleanNumber} for userId=${userId} type=${bType}`);
 
-    console.log(`[Pair Route] Starting pairing for ${cleanNumber}${userId ? ` user=${userId}` : ""}`);
+    console.log(`[Pair Route] Starting pairing for ${cleanNumber} user=${userId}`);
 
     const { pairingCode } = await createPairingSocket(cleanNumber);
 

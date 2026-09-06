@@ -51,6 +51,7 @@ async function tryGroqChat(
       const result = await groq.chat.completions.create({
         messages: messages as any,
         model,
+        max_tokens: 512,
       });
       const text = result.choices[0]?.message?.content;
       if (text) {

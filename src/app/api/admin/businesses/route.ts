@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Database from "better-sqlite3";
 import path from "path";
+import { requireAdminSession } from "@/lib/auth";
 
 const DB_PATH = path.join(process.cwd(), "data", "clinic.sqlite");
 
@@ -9,6 +10,8 @@ function getDb() {
 }
 
 export async function GET(req: Request) {
+  const guarded = requireAdminSession(req);
+  if ("error" in guarded) return guarded.error;
   const db = getDb();
   try {
     const { searchParams } = new URL(req.url);
@@ -66,6 +69,8 @@ export async function GET(req: Request) {
 }
 
 export async function PATCH(req: Request) {
+  const guarded = requireAdminSession(req);
+  if ("error" in guarded) return guarded.error;
   let body: any = {};
   try { body = await req.json(); } catch {}
   const userId = body.userId;
@@ -89,6 +94,8 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const guarded = requireAdminSession(req);
+  if ("error" in guarded) return guarded.error;
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
   if (!userId) {

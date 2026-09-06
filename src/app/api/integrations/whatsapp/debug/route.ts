@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { getWhatsAppSession } from "@/lib/whatsapp";
+import { requireAdminSession } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
 
 export async function GET(request: Request) {
   try {
+    const guarded = requireAdminSession(request);
+    if ("error" in guarded) return guarded.error;
+
     const { searchParams } = new URL(request.url);
     const phoneNumber = searchParams.get("phone");
 

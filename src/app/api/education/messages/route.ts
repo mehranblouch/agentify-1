@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
 import { getStudents, getAttendanceLogs, markNotified, getEducationSettings, logMessage } from "@/lib/services/sqlite-store";
 import { getWhatsAppSession } from "@/lib/whatsapp";
+import { requireSession } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
+    const guarded = requireSession(req);
+    if ("error" in guarded) return guarded.error;
+    const userId = guarded.session.userId;
+    if (!userId) return NextResponse.json({ success: false, error: "Not allowed" }, { status: 403 });
+
     const body = await req.json();
-    const { userId, type, message, date } = body; // type: 'absent' or 'broadcast'
-    
-    if (!userId || !type) return NextResponse.json({ success: false, error: "Missing fields" }, { status: 400 });
+    const { type, message, date } = body; // type: 'absent' or 'broadcast'
+
+    if (!type) return NextResponse.json({ success: false, error: "Missing fields" }, { status: 400 });
 
     const settings = getEducationSettings(userId);
     const cleanNumber = settings.whatsapp_number ? settings.whatsapp_number.replace(/\D/g, "") : "";

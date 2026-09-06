@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createQRSocket, normalizePhoneNumber } from "@/lib/whatsapp";
 import { assignWhatsAppNumberToBusiness } from "@/lib/services/sqlite-store";
+import { requireSession } from "@/lib/auth";
 
 export const maxDuration = 60;
 
@@ -11,10 +12,17 @@ export const maxDuration = 60;
  */
 export async function POST(request: Request) {
   try {
+    const guarded = requireSession(request);
+    if ("error" in guarded) return guarded.error;
+    const { userId } = guarded.session;
+
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "Not allowed" }, { status: 403 });
+    }
+
     const body = await request.json().catch(() => ({}));
-    const { phoneNumber, userId, businessType } = body as {
+    const { phoneNumber, businessType } = body as {
       phoneNumber?: string;
-      userId?: string;
       businessType?: string;
     };
 
@@ -27,12 +35,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Invalid phone number" }, { status: 400 });
     }
 
-    // Persist phone number in SQLite so business lookup works after restart
-    if (userId) {
-      const bType = (businessType as "clinic" | "education") || "clinic";
-      assignWhatsAppNumberToBusiness(userId, bType, cleanNumber);
-      console.log(`[QR Route] Persisted whatsapp_number=${cleanNumber} for userId=${userId} type=${bType}`);
-    }
+    // Persist phone number in SQLite so business lookup works after restart.
+    // userId always comes from the authenticated session, never the request body.
+    const bType = (businessType as "clinic" | "education") || "clinic";
+    assignWhatsAppNumberToBusiness(userId, bType, cleanNumber);
+    console.log(`[QR Route] Persisted whatsapp_number=${cleanNumber} for userId=${userId} type=${bType}`);
 
     console.log(`[QR Route] Generating QR for ${cleanNumber}`);
     const { qrString } = await createQRSocket(cleanNumber);

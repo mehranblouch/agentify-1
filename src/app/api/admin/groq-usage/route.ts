@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllGroqKeyUsage, resetGroqKeyUsage } from "@/lib/services/sqlite-store";
+import { requireAdminSession } from "@/lib/auth";
 
 const KEY_ENV_NAMES = [
   "GROQ_API_KEY",
@@ -9,7 +10,9 @@ const KEY_ENV_NAMES = [
   "GROQ_API_KEY_4",
 ];
 
-export async function GET() {
+export async function GET(req: Request) {
+  const guarded = requireAdminSession(req);
+  if ("error" in guarded) return guarded.error;
   try {
     const rows = getAllGroqKeyUsage();
     const keys = KEY_ENV_NAMES.map((envName, i) => {
@@ -32,6 +35,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const guarded = requireAdminSession(req);
+  if ("error" in guarded) return guarded.error;
   try {
     const { keyIndex } = await req.json();
     if (typeof keyIndex === "number") {

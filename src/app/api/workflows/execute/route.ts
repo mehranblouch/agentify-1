@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireSession } from "@/lib/auth";
 
 // Helper: Fetch Google Sheet as CSV (public sheets only)
 async function fetchSheetData(sheetUrl: string): Promise<Record<string, string>[]> {
@@ -32,11 +33,14 @@ async function fetchSheetData(sheetUrl: string): Promise<Record<string, string>[
 }
 
 // Helper: Send WhatsApp via the existing Baileys session
-async function sendWhatsAppMessage(phone: string, message: string, baseUrl: string) {
+async function sendWhatsAppMessage(phone: string, message: string, baseUrl: string, cookieHeader: string) {
   // Use internal WhatsApp sender API
   const res = await fetch(`${baseUrl}/api/integrations/whatsapp/send`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      cookie: cookieHeader,
+    },
     body: JSON.stringify({ phone, message }),
   });
   return res.ok;
@@ -44,6 +48,9 @@ async function sendWhatsAppMessage(phone: string, message: string, baseUrl: stri
 
 export async function POST(req: Request) {
   try {
+    const guarded = requireSession(req);
+    if ("error" in guarded) return guarded.error;
+
     const body = await req.json();
     const { sheetUrl, conditionColumn, conditionValue, phoneColumn, nameColumn, messageTemplate } = body;
 
@@ -75,6 +82,7 @@ export async function POST(req: Request) {
 
     // 3. Build messages and send
     const baseUrl = req.headers.get("origin") || "http://localhost:3000";
+    const cookieHeader = req.headers.get("cookie") || "";
     let sentCount = 0;
     const errors: string[] = [];
 
@@ -99,7 +107,7 @@ export async function POST(req: Request) {
       const delay = Math.floor(Math.random() * (globalRules.maxDelay - globalRules.minDelay + 1)) + globalRules.minDelay;
       await new Promise(r => setTimeout(r, delay * 1000));
 
-      const ok = await sendWhatsAppMessage(phone, message, baseUrl);
+      const ok = await sendWhatsAppMessage(phone, message, baseUrl, cookieHeader);
       if (ok) {
         sentCount++;
       } else {
