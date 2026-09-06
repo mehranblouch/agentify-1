@@ -1179,6 +1179,78 @@ export function getStudents(userId: string): Student[] {
     .map((row: any) => row as Student);
 }
 
+// Normalize a phone into +92 international form for Pakistani numbers:
+// "0300-1234567" -> "+923001234567", "0092..." -> "+92...", keeps Existing "+..." as-is.
+export function normalizePhone(raw: unknown): string {
+  const str = String(raw ?? "").trim();
+  if (!str) return "";
+  let digits = str.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("0092")) digits = digits.slice(4);
+  else if (digits.startsWith("92")) digits = digits.slice(2);
+  else if (digits.startsWith("0")) digits = digits.slice(1);
+  return digits.length >= 9 ? `+92${digits}` : str;
+}
+
+export function saveStudentsBulk(
+  userId: string,
+  rows: { name: string; father_name?: string; phone: string }[]
+): { added: number; duplicates: number; skipped: number } {
+  const database = getDb();
+  const existing = new Set<string>(
+    (database
+      .prepare("SELECT name, phone FROM students WHERE user_id = ?")
+      .all(userId) as any[]).map(
+      (r: any) => `${String(r.name || "").trim().toLowerCase()}::${String(r.phone || "").replace(/\D/g, "")}`
+    )
+  );
+  const inserted: any[] = [];
+
+  const insert = database.transaction((batch: any[]) => {
+    for (const row of batch) {
+      const student: Student = {
+        id: uuidv4(),
+        user_id: userId,
+        name: row._name,
+        father_name: row._father,
+        phone: row._phone,
+        created_at: new Date().toISOString(),
+      };
+      database
+        .prepare(
+          `INSERT INTO students (id, user_id, name, father_name, phone, created_at)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        )
+        .run(student.id, student.user_id, student.name, student.father_name, student.phone, student.created_at);
+      inserted.push(student);
+    }
+  });
+
+  let duplicates = 0;
+  let skipped = 0;
+  const batch: any[] = [];
+
+  for (const raw of rows) {
+    const name = String(raw.name || "").trim();
+    const phone = normalizePhone(raw.phone);
+    const father_name = String(raw.father_name || "").trim();
+    if (!name || !phone || phone.replace(/\D/g, "").length < 10) {
+      skipped++;
+      continue;
+    }
+    const key = `${name.toLowerCase()}::${phone.replace(/\D/g, "")}`;
+    if (existing.has(key)) {
+      duplicates++;
+      continue;
+    }
+    existing.add(key);
+    batch.push({ _name: name, _father: father_name, _phone: phone });
+  }
+
+  insert(batch);
+  return { added: inserted.length, duplicates, skipped };
+}
+
 export function saveStudent(input: Omit<Student, "id" | "created_at">): Student {
   const database = getDb();
   const student: Student = {

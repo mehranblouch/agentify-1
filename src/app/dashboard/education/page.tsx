@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { 
-  Settings, Users, CalendarCheck, Send, Loader2, Save, Plus, Trash2, Check, X, Bell, MessageSquare, Sparkles
+  Settings, Users, CalendarCheck, Send, Loader2, Save, Plus, Trash2, Check, X, Bell, MessageSquare, Sparkles, Upload
 } from "lucide-react";
 
 const EDUCATION_RULES_TEMPLATE = `- School Name: "Al-Hadi Grammar School"
@@ -66,6 +66,14 @@ export default function EducationDashboard() {
 
   // Broadcast
   const [broadcastMessage, setBroadcastMessage] = useState("");
+
+  // Excel Import
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importPreview, setImportPreview] = useState<{ name: string; father_name: string; phone: string }[]>([]);
+  const [importFilename, setImportFilename] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     if (tabParam && ["settings", "students", "attendance", "broadcast"].includes(tabParam) && tabParam !== activeTab) {
@@ -268,6 +276,110 @@ export default function EducationDashboard() {
     setLoading(null);
   };
 
+  const PHONE_RE = /whatsapp|phone|mobile|contact|whatsapp\s*number|parent.*phone/i;
+  const FATHER_RE = /father|parent\s*name/i;
+  const NAME_RE = /^name|student\s*name|student/i;
+
+  const autoMapColumns = (headers: string[]) => {
+    let nameIdx = -1, fatherIdx = -1, phoneIdx = -1;
+    headers.forEach((h, i) => {
+      const s = String(h || "").trim();
+      if (nameIdx === -1 && NAME_RE.test(s)) nameIdx = i;
+      else if (fatherIdx === -1 && FATHER_RE.test(s)) fatherIdx = i;
+      else if (phoneIdx === -1 && PHONE_RE.test(s)) phoneIdx = i;
+    });
+    if (nameIdx === -1) nameIdx = 0;
+    if (phoneIdx === -1) phoneIdx = headers.length >= 3 ? 2 : headers.length - 1;
+    if (fatherIdx === -1 && nameIdx !== phoneIdx) fatherIdx = [nameIdx, phoneIdx].includes(1) ? -1 : 1;
+    return { nameIdx, fatherIdx, phoneIdx };
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setParsing(true);
+    setImportFilename(file.name);
+
+    try {
+      let rows: any[][] = [];
+      if (file.name.endsWith(".csv")) {
+        const text = await file.text();
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        rows = lines.map(l => {
+          const cells: string[] = [];
+          let cur = "";
+          let inQ = false;
+          for (const ch of l) {
+            if (ch === '"') { inQ = !inQ; continue; }
+            if (ch === "," && !inQ) { cells.push(cur); cur = ""; continue; }
+            cur += ch;
+          }
+          cells.push(cur);
+          return cells;
+        });
+      } else {
+        const readXlsxFile = (await import("read-excel-file")).default;
+        rows = (await readXlsxFile(file)) as any[];
+      }
+
+      if (rows.length === 0) { toast.error("File is empty"); setParsing(false); return; }
+      if (rows.length > 5001) { toast.error("Max 5000 rows allowed"); setParsing(false); return; }
+
+      const [headerRow, ...dataRows] = rows;
+      const headers = headerRow.map(String);
+      const { nameIdx, fatherIdx, phoneIdx } = autoMapColumns(headers);
+      const mapped = dataRows.map(r => ({
+        name: String(r[nameIdx] ?? "").trim(),
+        father_name: fatherIdx >= 0 ? String(r[fatherIdx] ?? "").trim() : "",
+        phone: String(r[phoneIdx] ?? "").trim(),
+      })).filter(r => r.name || r.phone);
+      if (mapped.length === 0) { toast.error("No valid rows found"); setParsing(false); return; }
+      setImportPreview(mapped.slice(0, 5000));
+      setShowImportModal(true);
+    } catch (err: any) {
+      toast.error("Failed to parse file: " + (err.message || "unknown"));
+    }
+    setParsing(false);
+  };
+
+  const handleImport = async () => {
+    if (importPreview.length === 0) return;
+    setImporting(true);
+    const t = toast.loading(`Importing ${importPreview.length} students...`);
+    try {
+      const res = await fetch("/api/education/students/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ students: importPreview })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || "Import failed");
+      const parts = [`Added ${data.added}`];
+      if (data.duplicates) parts.push(`${data.duplicates} duplicate(s) skipped`);
+      if (data.skipped) parts.push(`${data.skipped} invalid row(s) skipped`);
+      toast.success(parts.join(", "), { id: t });
+      setShowImportModal(false);
+      setImportPreview([]);
+      setImportFilename("");
+      await loadStudents();
+    } catch (err: any) {
+      toast.error(err.message || "Import failed", { id: t });
+    }
+    setImporting(false);
+  };
+
+  const downloadTemplate = () => {
+    const csv = "Student Name,Father's Name,Whatsapp Number\nAhmed Ali,Muhammad Ali,+923001234567\n";
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "students_template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in pb-20">
       
@@ -361,6 +473,62 @@ export default function EducationDashboard() {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import Excel Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => { if (!importing) { setShowImportModal(false); setImportPreview([]); setImportFilename(""); } }}></div>
+          <div className="bg-card border border-border w-full max-w-2xl rounded-[40px] relative z-10 overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="p-8 sm:p-10">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-2xl font-black italic tracking-tight">Import Students</h3>
+                  <p className="text-text-secondary text-sm font-medium">{importFilename} — {importPreview.length} rows detected</p>
+                </div>
+                <button onClick={() => { if (!importing) { setShowImportModal(false); setImportPreview([]); setImportFilename(""); } }} className="p-3 bg-background border border-border rounded-2xl hover:border-red-500/50 transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="max-h-[50vh] overflow-auto border border-border rounded-2xl mb-6">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-background border-b border-border text-[10px] uppercase tracking-widest text-text-secondary sticky top-0">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">Student Name</th>
+                      <th className="p-3">Father's Name</th>
+                      <th className="p-3">Phone</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {importPreview.slice(0, 50).map((r, i) => (
+                      <tr key={i} className={!r.name || !r.phone ? "bg-red-500/5" : ""}>
+                        <td className="p-3 text-text-secondary">{i + 1}</td>
+                        <td className="p-3 font-bold">{r.name || <span className="text-red-500">Missing</span>}</td>
+                        <td className="p-3">{r.father_name}</td>
+                        <td className="p-3 font-mono">{r.phone || <span className="text-red-500">Missing</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {importPreview.length > 50 && (
+                <p className="text-xs text-text-secondary mb-4 text-center">Showing first 50 rows. All {importPreview.length} rows will be imported.</p>
+              )}
+
+              <button
+                onClick={handleImport}
+                disabled={importing}
+                className="w-full py-4 bg-primary hover:bg-primary/80 text-white rounded-2xl font-black text-sm flex items-center justify-center gap-3 shadow-xl transition-all disabled:opacity-50"
+              >
+                {importing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                {importing ? "Importing..." : `Import ${importPreview.length} Students`}
+              </button>
             </div>
           </div>
         </div>
@@ -484,7 +652,23 @@ export default function EducationDashboard() {
         {/* STUDENTS TAB */}
         {activeTab === "students" && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-            <h3 className="text-2xl font-black italic">Student Database</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-2xl font-black italic">Student Database</h3>
+              <div className="flex items-center gap-3">
+                <button onClick={downloadTemplate} className="px-4 py-2.5 bg-background border border-border rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:border-primary/50 transition-all flex items-center gap-2">
+                  Download Template
+                </button>
+                <input ref={fileInputRef} type="file" accept=".xlsx,.csv" onChange={handleFileChange} className="hidden" />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={parsing}
+                  className="px-5 py-2.5 bg-primary/10 border border-primary/20 text-primary rounded-xl font-black text-sm flex items-center gap-2 hover:bg-primary/20 transition-all disabled:opacity-50"
+                >
+                  {parsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  Import Excel
+                </button>
+              </div>
+            </div>
             
             <div className="bg-background border border-border p-6 rounded-2xl flex flex-col md:flex-row gap-4 items-end">
               <div className="flex-1 space-y-2">
