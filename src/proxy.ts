@@ -8,7 +8,9 @@ export function proxy(request: NextRequest) {
   const hasSessionCookie = request.cookies.has(SESSION_COOKIE);
 
   if (!hasSessionCookie) {
-    if (pathname.startsWith("/dashboard") || pathname === "/admin") {
+    // /admin has its own client-side password gate (server APs are session-checked),
+    // so only business dashboard pages redirect to the broker login.
+    if (pathname.startsWith("/dashboard")) {
       const loginUrl = new URL("/login", request.url);
       return NextResponse.redirect(loginUrl);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 type Business = {
   id: string;
@@ -31,6 +32,7 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<"businesses" | "keys">("businesses");
   const [clinics, setClinics] = useState<Business[]>([]);
   const [schools, setSchools] = useState<Business[]>([]);
@@ -39,6 +41,40 @@ export default function AdminPage() {
   const [resettingKey, setResettingKey] = useState<number | null>(null);
   const [togglingPause, setTogglingPause] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+
+  const handleDownloadBackup = async () => {
+    try {
+      const res = await fetch("/api/admin/backup", { credentials: "same-origin" });
+      if (!res.ok) return alert("Failed to download backup.");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "clinic.sqlite";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Failed to download backup.");
+    }
+  };
+
+  const handleRestore = async (file: File) => {
+    try {
+      const res = await fetch("/api/admin/restore-db", {
+        method: "POST",
+        credentials: "same-origin",
+        body: file,
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Database restored. Restart the service now (not a redeploy) to load it.");
+      } else {
+        alert("Restore failed: " + (data.error || "unknown error"));
+      }
+    } catch {
+      alert("Restore failed. Check the selected file.");
+    }
+  };
 
   const loadKeyUsage = useCallback(async () => {
     try {
@@ -190,16 +226,26 @@ export default function AdminPage() {
         <div className="bg-card p-8 rounded-3xl border border-border text-center max-w-sm w-full space-y-4 shadow-xl">
           <h1 className="text-2xl font-black">Admin Access</h1>
           <p className="text-text-secondary text-sm">Please enter the admin password.</p>
-          <input
-            type="password"
-            className="w-full bg-background border border-border rounded-xl px-4 py-3 text-center text-lg"
-            placeholder="••••••••"
-            value={passwordInput}
-            onChange={(e) => setPasswordInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAdminLogin();
-            }}
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              className="w-full bg-background border border-border rounded-xl px-4 py-3 text-center text-lg pr-12"
+              placeholder="••••••••"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAdminLogin();
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-text-secondary hover:text-foreground transition-colors"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
           <button
             className="w-full bg-primary text-white font-bold py-3 rounded-xl hover:opacity-90 transition-opacity"
             onClick={handleAdminLogin}
@@ -233,6 +279,35 @@ export default function AdminPage() {
         >
           API Key Tokens
         </button>
+      </div>
+
+      {/* Database backup / restore */}
+      <div className="bg-card border border-border rounded-2xl p-4 mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center gap-3 max-w-xl">
+        <div className="flex-1">
+          <h3 className="font-bold text-sm">Database Backup</h3>
+          <p className="text-text-secondary text-xs mt-0.5">
+            Download a copy of the current database, or restore one after a fresh deploy.
+          </p>
+        </div>
+        <button
+          onClick={handleDownloadBackup}
+          className="px-4 py-2.5 rounded-xl bg-background border border-border text-sm font-bold hover:border-primary/50 transition-colors"
+        >
+          Download
+        </button>
+        <label className="px-4 py-2.5 rounded-xl text-sm font-bold bg-primary/10 text-primary hover:bg-primary/20 transition-colors cursor-pointer">
+          Restore
+          <input
+            type="file"
+            accept=".sqlite,.db,application/octet-stream"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleRestore(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
       </div>
 
       {/* Businesses tab */}
