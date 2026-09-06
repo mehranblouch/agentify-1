@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Database, Smartphone, Shield } from "lucide-react";
+import { ArrowRight, CheckCircle2, Shield, Smartphone } from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -14,7 +14,6 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-text-secondary">
             <Link href="#features" className="hover:text-foreground transition-colors">Features</Link>
             <Link href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</Link>
-            <Link href="#demo" className="hover:text-foreground transition-colors">Live Demo</Link>
             <Link href="#faq" className="hover:text-foreground transition-colors">FAQ</Link>
           </div>
           <div className="flex items-center gap-4">
@@ -35,13 +34,13 @@ export default function LandingPage() {
             <span>🚀</span> Now in Beta — Join Free Today
           </div>
           <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">
-            Your Business Deserves A <br className="hidden md:block" />
-            <span className="text-primary">24/7 AI Customer Agent</span>
+            Your Clinic & School Deserves A <br className="hidden md:block" />
+            <span className="text-primary">24/7 AI Assistant</span>
           </h1>
           <p className="text-lg md:text-xl text-text-secondary max-w-3xl mx-auto mb-10 leading-relaxed">
-            Add a smart AI agent to your website in 5 minutes. It connects to WhatsApp, Instagram and your Google Sheet, 
-            knows your products, prices, appointments and orders — and answers customers 
-            automatically while you sleep.
+            Agentify answers your patients and parents on WhatsApp automatically — booking appointments for
+            clinics, sending attendance updates for schools, and keeping every conversation answered
+            while you sleep.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <Link href="/register" className="w-full sm:w-auto px-8 py-4 text-base font-black text-black bg-white rounded-2xl hover:bg-white/90 transition-all shadow-xl shadow-white/10 flex items-center justify-center gap-2">
@@ -54,27 +53,30 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-text-secondary">
             <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> No credit card</div>
             <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> 5 minute setup</div>
-            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> Works on any website</div>
+            <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> Works inside WhatsApp</div>
             <div className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-primary" /> Free forever plan</div>
           </div>
         </section>
 
-        {/* Problem Section */}
+        {/* Features */}
         <section id="features" className="py-20">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Sound familiar?</h2>
-            <p className="text-text-secondary">There is a smarter way to handle customer support.</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything your clinic or school needs</h2>
+            <p className="text-text-secondary">One AI agent that never sleeps, never misses a message.</p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              { icon: "😤", text: "Answering same questions 100 times daily" },
-              { icon: "🌙", text: "Missing customers at night when offline" },
-              { icon: "📱", text: "Customers asking on WhatsApp non-stop" },
-              { icon: "💸", text: "Can't afford 24/7 support staff" }
-            ].map((problem, i) => (
-              <div key={i} className="bg-card border border-border rounded-2xl p-6 text-center hover:border-primary/50 transition-colors">
-                <div className="text-4xl mb-4">{problem.icon}</div>
-                <p className="font-medium">{problem.text}</p>
+              { icon: "🏥", title: "Appointments on WhatsApp", desc: "Patients message your clinic number and the AI books, confirms and reschedules appointments automatically." },
+              { icon: "🗓️", title: "Timings & Fees, Always Known", desc: "Consultation hours, fee structure and location — answered instantly, at midnight or on weekends." },
+              { icon: "📚", title: "Import Students from CSV", desc: "Export your list from Excel, upload it, and your entire student database is ready in minutes." },
+              { icon: "✅", title: "Attendance Sent to Parents", desc: "Mark present or absent in one tap and parents get a personal WhatsApp update the same moment." },
+              { icon: "📲", title: "Works Inside WhatsApp", desc: "No apps to install, no websites to visit. Patients and parents already use WhatsApp every day." },
+              { icon: "⚡", title: "Live in Minutes, No Tech Skills", desc: "Set up your clinic or school in under five minutes with a simple step-by-step flow." }
+            ].map((feature, i) => (
+              <div key={i} className="bg-card border border-border rounded-2xl p-6 hover:-translate-y-1 transition-transform">
+                <div className="text-3xl mb-4">{feature.icon}</div>
+                <h3 className="text-lg font-bold mb-2">{feature.title}</h3>
+                <p className="text-sm text-text-secondary leading-relaxed">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -90,9 +92,9 @@ export default function LandingPage() {
             <div className="hidden md:block absolute top-12 left-0 w-full h-[2px] bg-border -z-10" />
             {[
               { icon: "👤", title: "Create Account", desc: "Sign up free. No credit card needed." },
-              { icon: "📝", title: "Add Info", desc: "Add FAQ, services, timings and rules." },
-              { icon: "📊", title: "Add Channels", desc: "Connect WhatsApp, Instagram & Google Sheet." },
-              { icon: "🚀", title: "Paste Code", desc: "Copy one line of code to your website." }
+              { icon: "🏥", title: "Pick Clinic or School", desc: "Choose your type and tell the agent your timings, fees or classes." },
+              { icon: "📲", title: "Add Your Students Or Patients", desc: "Import your student CSV or connect your clinic WhatsApp number." },
+              { icon: "🚀", title: "Go Live", desc: "Your AI agent starts answering messages right away." }
             ].map((step, i) => (
               <div key={i} className="relative bg-background pt-4 md:pt-0">
                 <div className="w-16 h-16 mx-auto bg-card border-2 border-primary rounded-full flex items-center justify-center text-2xl mb-6 shadow-[0_0_15px_rgba(22,163,74,0.2)]">
@@ -105,47 +107,51 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Google Sheet Feature */}
+        {/* WhatsApp + Privacy */}
         <section className="py-20 bg-card border border-border rounded-3xl p-8 md:p-12 my-12">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">WhatsApp, Instagram & Google Sheets</h2>
+              <h2 className="text-3xl md:text-4xl font-bold mb-6">WhatsApp-First. Simple by design.</h2>
               <p className="text-lg text-text-secondary mb-8 leading-relaxed">
-                No complex integrations. No technical knowledge. Just paste your sheet link. Your AI agent reads your live products, orders, and appointments automatically.
+                No complex integrations and no new apps for your customers. Your agent lives in the
+                WhatsApp number people already know for your clinic or school.
               </p>
               <ul className="space-y-4">
                 <li className="flex items-start gap-3">
-                  <Shield className="w-6 h-6 text-primary shrink-0" />
-                  <span className="text-text-secondary">Read only — we can never edit your data</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <Database className="w-6 h-6 text-primary shrink-0" />
-                  <span className="text-text-secondary">Updates instantly when you change sheet</span>
-                </li>
-                <li className="flex items-start gap-3">
                   <Smartphone className="w-6 h-6 text-primary shrink-0" />
-                  <span className="text-text-secondary">Works from your phone anywhere</span>
+                  <span className="text-text-secondary">Runs entirely inside WhatsApp — patients and parents need nothing else</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Shield className="w-6 h-6 text-primary shrink-0" />
+                  <span className="text-text-secondary">Only the data you add is used — never shared, never public</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />
+                  <span className="text-text-secondary">Change timings, fees or student lists anytime from your dashboard</span>
                 </li>
               </ul>
             </div>
             <div className="relative">
               <div className="absolute inset-0 bg-primary/20 blur-3xl rounded-full" />
-              <div className="relative bg-background border border-border rounded-xl p-4 shadow-2xl">
+              <div className="relative bg-background border border-border rounded-xl p-4 shadow-2xl font-mono text-xs sm:text-sm">
                 <div className="flex items-center gap-2 mb-4 border-b border-border pb-2">
                   <div className="w-3 h-3 rounded-full bg-red-500" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500" />
                   <div className="w-3 h-3 rounded-full bg-green-500" />
-                  <span className="text-xs text-text-secondary ml-2">inventory.xlsx</span>
+                  <span className="text-text-secondary ml-2">WhatsApp chat</span>
                 </div>
-                <div className="space-y-2 font-mono text-sm">
-                  <div className="grid grid-cols-3 gap-4 text-text-secondary pb-2 border-b border-border/50">
-                    <span>Product</span><span>Stock</span><span>Price</span>
+                <div className="space-y-3">
+                  <div className="bg-background border border-border rounded-xl rounded-tl-sm p-3 max-w-[85%] self-start">
+                    <span className="text-text-secondary">Salam! Doctor ka time kya hai aaj?</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <span>Nike Air Max</span><span className="text-primary">3 in stock</span><span>Rs.12000</span>
+                  <div className="bg-primary/10 border border-primary/20 rounded-xl rounded-tr-sm p-3 max-w-[85%] ml-auto text-primary">
+                    <span>Doctor Kamran is available 6 PM — 9 PM today. Shall I book you a slot? 😊</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <span>Nike Pro</span><span className="text-red-500">Out of stock</span><span>Rs.8000</span>
+                  <div className="bg-background border border-border rounded-xl rounded-tl-sm p-3 max-w-[85%] self-start">
+                    <span className="text-text-secondary">Yes please, 7 PM.</span>
+                  </div>
+                  <div className="bg-primary/10 border border-primary/20 rounded-xl rounded-tr-sm p-3 max-w-[85%] ml-auto text-primary">
+                    <span>Done — your appointment is confirmed for today 7:00 PM. We'll remind you! ✅</span>
                   </div>
                 </div>
               </div>
@@ -156,74 +162,27 @@ export default function LandingPage() {
         {/* Business Types */}
         <section className="py-20">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Built For Every Business</h2>
-            <p className="text-text-secondary">Whatever you sell, Agentify can handle it.</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Built for the two businesses that matter</h2>
+            <p className="text-text-secondary">Pick your type at signup and Agentify adapts itself.</p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
             {[
-              { icon: "🏥", title: "Clinics & Doctors", desc: "Book appointments, answer patient questions, share timings" },
-              { icon: "🛒", title: "Ecommerce Stores", desc: "Check stock, track orders, answer product questions" },
-              { icon: "📦", title: "Courier Services", desc: "Track parcels, answer delivery questions, give updates" },
-              { icon: "🍕", title: "Restaurants", desc: "Share menu, take reservations, answer food questions" },
-              { icon: "💇", title: "Salons & Spas", desc: "Book appointments, share services, answer pricing questions" },
-              { icon: "🏫", title: "Tuition Centers", desc: "Share schedules, answer fee questions, book trial classes" }
+              { icon: "🏥", title: "Clinics & Doctors", points: ["Appointments booked automatically on WhatsApp", "Timings, location and fees answered instantly", "Reminders sent so fewer patients miss their visit"] },
+              { icon: "🏫", title: "Schools & Academies", points: ["Full student list imported from a simple CSV", "Daily attendance marked in one tap", "Parents receive attendance updates on WhatsApp"] }
             ].map((type, i) => (
-              <div key={i} className="bg-card border border-border rounded-2xl p-6 hover:-translate-y-1 transition-transform cursor-default">
-                <div className="text-3xl mb-4">{type.icon}</div>
-                <h3 className="text-lg font-bold mb-2">{type.title}</h3>
-                <p className="text-sm text-text-secondary leading-relaxed">{type.desc}</p>
+              <div key={i} className="bg-card border border-border rounded-2xl p-8 hover:-translate-y-1 transition-transform">
+                <div className="text-4xl mb-4">{type.icon}</div>
+                <h3 className="text-xl font-bold mb-4">{type.title}</h3>
+                <ul className="space-y-3">
+                  {type.points.map((p, j) => (
+                    <li key={j} className="flex items-start gap-2 text-sm text-text-secondary">
+                      <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <span>{p}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* Demo Section */}
-        <section id="demo" className="py-20">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-sm font-medium mb-4 border border-secondary/20">
-              Try It Right Now
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Meet Your New Assistant</h2>
-            <p className="text-text-secondary max-w-2xl mx-auto">
-              This is a real AI agent trained on a sample "City Medical Clinic". 
-              Ask it about appointments, timings, fees, or available doctors.
-            </p>
-          </div>
-          
-          <div className="max-w-md mx-auto bg-card border border-border rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[500px]">
-            <div className="bg-border/50 p-4 flex items-center justify-between border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="text-2xl">🤖</div>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-card"></div>
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">City Medical Clinic</h3>
-                  <p className="text-xs text-text-secondary">Replies instantly</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4">
-              <div className="bg-background border border-border rounded-2xl rounded-tl-sm p-3 max-w-[85%] text-sm self-start">
-                Welcome to City Medical Clinic! How can I help you today? 😊 You can ask me about our timings, doctors, fees, or how to book an appointment.
-              </div>
-              <div className="text-center text-xs text-text-secondary my-4">
-                (Demo mode: Type a message below to test)
-              </div>
-            </div>
-            <div className="p-4 border-t border-border bg-background">
-              <div className="flex items-center gap-2 bg-card border border-border rounded-xl p-2">
-                <input 
-                  type="text" 
-                  placeholder="Ask about fees or timings..." 
-                  className="flex-1 bg-transparent border-none outline-none text-sm px-2"
-                  disabled
-                />
-                <button disabled className="p-2 bg-primary rounded-lg text-white opacity-50">
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -234,9 +193,9 @@ export default function LandingPage() {
           </div>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { name: "Dr. Ayesha Khan", location: "Lahore", text: "My patients book appointments at midnight without calling me. I wake up with confirmed bookings in my Google Sheet." },
-              { name: "Hassan Electronics", location: "Karachi", text: "Customers ask about stock and prices all day. My Google Sheet has all products. Agent answers everything automatically." },
-              { name: "QuickSend Courier", location: "Islamabad", text: "Customers track their own parcels now. I just update my tracking sheet. My phone doesn't ring 100 times daily." }
+              { name: "Dr. Ayesha Khan", location: "Clinic, Lahore", text: "My patients book appointments at midnight without calling me. I wake up with confirmed bookings already in my dashboard." },
+              { name: "Saima Ali", location: "School, Faisalabad", text: "I imported all 400 students from Excel in minutes. Parents now get attendance on WhatsApp before I've even had my tea." },
+              { name: "Rehan Iqbal", location: "Academy, Karachi", text: "Fee questions, class timings, session updates — the agent handles them all. My staff finally focus on teaching, not replying." }
             ].map((t, i) => (
               <div key={i} className="bg-card border border-border rounded-2xl p-6 relative">
                 <div className="text-primary mb-4 text-sm">⭐⭐⭐⭐⭐</div>
@@ -262,10 +221,12 @@ export default function LandingPage() {
           </div>
           <div className="space-y-4">
             {[
-              { q: "Does it work on WordPress?", a: "Yes. Works on WordPress, Wix, Shopify, and any website. Just paste one line." },
-              { q: "Do I need technical knowledge?", a: "Zero. If you can use WhatsApp, you can use Agentify." },
-              { q: "Can the agent edit my Google Sheet?", a: "Never. Read only access. Your data is always safe." },
-              { q: "What language does it speak?", a: "English and Urdu both supported natively." }
+              { q: "Which businesses does Agentify work with?", a: "Clinics and doctors, plus schools, academies and tuition centers. Pick your type at signup and the agent adapts itself." },
+              { q: "How do patients book appointments?", a: "They message your WhatsApp number and the AI books, confirms and reschedules appointments automatically — even at 3 AM." },
+              { q: "How do I add my students?", a: "Export your student list from Excel as a CSV and upload it. Names and numbers import in minutes, ready for attendance." },
+              { q: "How do parents get attendance updates?", a: "Mark each class present or absent from your dashboard and parents receive a personal WhatsApp message straight away." },
+              { q: "Do my customers need to install anything?", a: "No. Everything runs inside WhatsApp, which they already use every day." },
+              { q: "Do I need technical knowledge?", a: "Zero. If you can send a WhatsApp message, you can run Agentify." }
             ].map((faq, i) => (
               <div key={i} className="bg-card border border-border rounded-xl p-6">
                 <h3 className="font-bold text-lg mb-2">{faq.q}</h3>
@@ -283,7 +244,7 @@ export default function LandingPage() {
             <span className="text-2xl">🤖</span>
             <div>
               <span className="text-xl font-bold font-sans block">Agentify</span>
-              <span className="text-xs text-text-secondary">Your business. Always online.</span>
+              <span className="text-xs text-text-secondary">Your clinic & school. Always online.</span>
             </div>
           </div>
           <div className="flex gap-6 text-sm text-text-secondary">
