@@ -123,23 +123,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             { name: "Attendance", href: "/dashboard/education?tab=attendance", icon: CalendarCheck },
             { name: "Broadcast", href: "/dashboard/education?tab=broadcast", icon: Send },
           ]);
-          if (pathname === "/dashboard") {
+          if (pathname.startsWith("/dashboard/education") === false) {
             router.replace("/dashboard/education");
-            return;
           }
         } else if (data.business_type === "clinic") {
           setNavItems([
             { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
             { name: "Appointments", href: "/dashboard/appointments", icon: Calendar },
           ]);
-          if (pathname === "/dashboard/education") {
+          if (pathname === "/dashboard/education" || pathname === "/onboarding") {
             router.replace("/dashboard");
-            return;
           }
         } else {
+          // No business type yet — go to onboarding (unless already there)
           if (pathname !== "/onboarding") {
             router.replace("/onboarding");
-            return;
           }
         }
         setIsLoading(false);

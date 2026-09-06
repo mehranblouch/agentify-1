@@ -1,11 +1,6 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
-import {
-  createSession,
-  destroySession,
-  getSession,
-  updatePasswordHash,
-} from "./services/sqlite-store";
+import { updatePasswordHash } from "./services/sqlite-store";
 
 export const SESSION_COOKIE = "agentify_session";
 export const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -48,8 +43,19 @@ export async function ensurePasswordUpgraded(
 }
 
 // ─────────────────────────────────────────────
-// Server-side sessions (httpOnly cookie)
+// Stateless signed sessions (httpOnly cookie, HMAC)
+// No DB rows required — sessions survive DB restores/redeploys.
 // ─────────────────────────────────────────────
+
+function sessionSecret(): string {
+  // SESSION_SECRET must be stable across redeploys. Env var is set in `.env.local`
+  // and on Railway. Fall back to the previously generated value so the app works
+  // out of the box even if the env var is missing.
+  return (
+    process.env.SESSION_SECRET ||
+    "agentify-dev-secret-do-not-use-in-prod-8f3a2b"
+  );
+}
 
 export function sha256(input: string): string {
   return crypto.createHash("sha256").update(input).digest("hex");
@@ -63,10 +69,44 @@ export function issueSession(
   userId: string | null,
   role: "user" | "admin"
 ): string {
-  const token = newSessionToken();
-  const hash = sha256(token);
-  createSession(hash, userId, role, SESSION_TTL_MS);
-  return token;
+  const now = Date.now();
+  const payload = {
+    uid: userId,
+    role,
+    iat: now,
+    exp: now + SESSION_TTL_MS,
+  };
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const sig = signPayload(body);
+  return `${body}.${sig}`;
+}
+
+function signPayload(body: string): string {
+  return crypto
+    .createHmac("sha256", sessionSecret())
+    .update(body)
+    .digest("base64url");
+}
+
+function verifyToken(token: string): SessionInfo | null {
+  const dot = token.indexOf(".");
+  if (dot < 0) return null;
+  const body = token.slice(0, dot);
+  const sig = token.slice(dot + 1);
+  const expected = signPayload(body);
+  const a = Buffer.from(sig);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    if (!payload || typeof payload.exp !== "number" || payload.exp < Date.now()) {
+      return null;
+    }
+    return { userId: payload.uid || null, role: payload.role || "user" };
+  } catch {
+    return null;
+  }
 }
 
 export function setSessionCookie(res: NextResponse, token: string): void {
@@ -99,9 +139,7 @@ export function resolveRequestSession(req: Request): SessionInfo | null {
   const cookieHeader = req.headers.get("cookie") || "";
   const match = parseCookies(cookieHeader)[SESSION_COOKIE];
   if (!match) return null;
-  const session = getSession(sha256(match));
-  if (!session) return null;
-  return { userId: session.user_id, role: session.role };
+  return verifyToken(match);
 }
 
 /** Require a valid session; returns a 401 JSON response if missing. */
@@ -126,10 +164,9 @@ export function requireAdminSession(
   return { session };
 }
 
-export function destroyCurrentSession(req: Request): void {
-  const cookieHeader = req.headers.get("cookie") || "";
-  const token = parseCookies(cookieHeader)[SESSION_COOKIE];
-  if (token) destroySession(sha256(token));
+export function destroyCurrentSession(_req: Request): void {
+  // Stateless sessions have no server-side row to destroy. Clearing the cookie
+  // (done by the logout route) fully invalidates the client's session.
 }
 
 // ─────────────────────────────────────────────

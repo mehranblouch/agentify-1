@@ -302,26 +302,20 @@ export default function EducationDashboard() {
     setImportFilename(file.name);
 
     try {
-      let rows: any[][] = [];
-      if (file.name.endsWith(".csv")) {
-        const text = await file.text();
-        const lines = text.split(/\r?\n/).filter(l => l.trim());
-        rows = lines.map(l => {
-          const cells: string[] = [];
-          let cur = "";
-          let inQ = false;
-          for (const ch of l) {
-            if (ch === '"') { inQ = !inQ; continue; }
-            if (ch === "," && !inQ) { cells.push(cur); cur = ""; continue; }
-            cur += ch;
-          }
-          cells.push(cur);
-          return cells;
-        });
-      } else {
-        const readXlsxFile = (await import("read-excel-file")).default;
-        rows = (await readXlsxFile(file)) as any[];
-      }
+      const text = await file.text();
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const rows = lines.map(l => {
+        const cells: string[] = [];
+        let cur = "";
+        let inQ = false;
+        for (const ch of l) {
+          if (ch === '"') { inQ = !inQ; continue; }
+          if (ch === "," && !inQ) { cells.push(cur); cur = ""; continue; }
+          cur += ch;
+        }
+        cells.push(cur);
+        return cells;
+      });
 
       if (rows.length === 0) { toast.error("File is empty"); setParsing(false); return; }
       if (rows.length > 5001) { toast.error("Max 5000 rows allowed"); setParsing(false); return; }
@@ -478,7 +472,7 @@ export default function EducationDashboard() {
         </div>
       )}
 
-      {/* Import Excel Modal */}
+      {/* Import CSV Modal */}
       {showImportModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => { if (!importing) { setShowImportModal(false); setImportPreview([]); setImportFilename(""); } }}></div>
@@ -658,14 +652,14 @@ export default function EducationDashboard() {
                 <button onClick={downloadTemplate} className="px-4 py-2.5 bg-background border border-border rounded-xl text-[10px] font-black uppercase tracking-widest text-text-secondary hover:border-primary/50 transition-all flex items-center gap-2">
                   Download Template
                 </button>
-                <input ref={fileInputRef} type="file" accept=".xlsx,.csv" onChange={handleFileChange} className="hidden" />
+                <input ref={fileInputRef} type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={parsing}
                   className="px-5 py-2.5 bg-primary/10 border border-primary/20 text-primary rounded-xl font-black text-sm flex items-center gap-2 hover:bg-primary/20 transition-all disabled:opacity-50"
                 >
                   {parsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                  Import Excel
+                  Import CSV
                 </button>
               </div>
             </div>
