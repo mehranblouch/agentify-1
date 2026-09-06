@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
     const rows = db
       .prepare(
-        `SELECT u.id, u.name, u.email, u.business_type, u.created_at, u.paused,
+        `SELECT u.id, u.name, u.email, u.business_type, u.created_at, u.paused, u.policy_accepted, u.policy_accepted_at,
                 COALESCE(c.clinic_name, e.institute_name) as business_name,
                 COALESCE(c.whatsapp_number, e.whatsapp_number) as whatsapp_number
          FROM users u

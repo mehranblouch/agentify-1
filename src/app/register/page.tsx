@@ -9,13 +9,16 @@ import toast from "react-hot-toast";
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", acceptedPolicy: false });
   const [showPassword, setShowPassword] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.email || !form.password) {
       return toast.error("Please fill in all fields.");
+    }
+    if (!form.acceptedPolicy) {
+      return toast.error("Please accept the Terms of Service to continue.");
     }
 
     setLoading(true);
@@ -25,7 +28,12 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, email: form.email, password: form.password }),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          password: form.password,
+          acceptedPolicy: form.acceptedPolicy,
+        }),
       });
       const result = await res.json();
 
@@ -123,6 +131,36 @@ export default function RegisterPage() {
                 </button>
               </div>
             </div>
+
+            <label
+              id="register-policy"
+              htmlFor="register-policy-input"
+              className="flex items-start gap-3 bg-background/60 border border-border rounded-2xl p-4 cursor-pointer select-none hover:border-primary/40 transition-all"
+            >
+              <input
+                type="checkbox"
+                id="register-policy-input"
+                className="sr-only"
+                checked={form.acceptedPolicy}
+                onChange={(e) => setForm({ ...form, acceptedPolicy: e.target.checked })}
+              />
+              <span
+                className={`shrink-0 mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
+                  form.acceptedPolicy ? "bg-primary border-primary" : "border-text-secondary/40 bg-background"
+                }`}
+              >
+                {form.acceptedPolicy && (
+                  <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                    <path d="M20 6L9 17l-5-5" />
+                  </svg>
+                )}
+              </span>
+              <span className="text-xs leading-relaxed text-text-secondary font-medium">
+                I agree to the Terms of Service and Acceptable Use Policy. I understand that I am solely
+                responsible for the content, messages, data, and activities carried out through my account
+                and for ensuring that my use of the platform complies with applicable laws.
+              </span>
+            </label>
 
             <button
               type="submit"

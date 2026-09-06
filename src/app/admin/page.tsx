@@ -14,6 +14,8 @@ type Business = {
   messages_incoming: number;
   messages_outgoing: number;
   paused: number;
+  policy_accepted: number | null;
+  policy_accepted_at: string | null;
   token_used: number;
 };
 
@@ -180,6 +182,18 @@ export default function AdminPage() {
             <span className="font-bold text-lg truncate">{b.business_name || b.name}</span>
             {b.paused && (
               <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5">Paused</span>
+            )}
+            {b.policy_accepted ? (
+              <span
+                title={`Accepted ${b.policy_accepted_at ? new Date(b.policy_accepted_at).toLocaleString() : ""}`}
+                className="shrink-0 text-[10px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded-full px-2 py-0.5"
+              >
+                Policy ✔
+              </span>
+            ) : (
+              <span className="shrink-0 text-[10px] font-black uppercase tracking-wider text-text-secondary bg-background border border-border rounded-full px-2 py-0.5">
+                Policy ✖
+              </span>
             )}
           </div>
           <span className="shrink-0 text-text-secondary text-xs font-medium">View stats</span>
@@ -439,6 +453,15 @@ export default function AdminPage() {
                   <div className="bg-background border border-border rounded-xl p-4">
                     <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Email</div>
                     <div className="font-bold break-all text-sm mt-1">{selectedBusiness.email}</div>
+                  </div>
+                  <div className="bg-background border border-border rounded-xl p-4">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-text-secondary mb-1">Terms Accepted</div>
+                    <div className={`font-bold ${selectedBusiness.policy_accepted ? "text-emerald-400" : "text-red-400"}`}>
+                      {selectedBusiness.policy_accepted ? "Yes" : "No"}
+                    </div>
+                    {selectedBusiness.policy_accepted_at && (
+                      <div className="text-xs text-text-secondary mt-1">{new Date(selectedBusiness.policy_accepted_at).toLocaleString()}</div>
+                    )}
                   </div>
                 </div>
 

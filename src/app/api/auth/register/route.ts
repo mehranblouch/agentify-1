@@ -5,11 +5,21 @@ import { hashPassword, issueSession, setSessionCookie } from "@/lib/auth";
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, email, password } = body || {};
+    const { name, email, password, acceptedPolicy } = body || {};
 
     if (!name || !email || !password) {
       return NextResponse.json(
         { success: false, error: "Name, email and password are required" },
+        { status: 400 }
+      );
+    }
+
+    if (acceptedPolicy !== true) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "You must accept the Terms of Service and Acceptable Use Policy to register.",
+        },
         { status: 400 }
       );
     }
@@ -51,7 +61,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = createUser({ name, email, password: hashPassword(password) });
+    const user = createUser({ name, email, password: hashPassword(password), policy_accepted: 1 });
 
     const token = issueSession(user.id, "user");
     const res = NextResponse.json({
@@ -60,6 +70,8 @@ export async function POST(req: Request) {
       email: user.email,
       name: user.name,
       business_type: user.business_type,
+      policy_accepted: user.policy_accepted,
+      policy_accepted_at: user.policy_accepted_at,
     });
     setSessionCookie(res, token);
     return res;

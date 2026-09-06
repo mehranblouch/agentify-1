@@ -21,6 +21,8 @@ export type User = {
   locked_until?: string | null;
   last_login?: string | null;
   business_type: "clinic" | "education" | null;
+  policy_accepted?: number;
+  policy_accepted_at?: string | null;
   created_at: string;
 };
 
@@ -137,9 +139,20 @@ function getDb() {
       name TEXT NOT NULL,
       password TEXT NOT NULL,
       business_type TEXT,
+      policy_accepted INTEGER DEFAULT 0,
+      policy_accepted_at TEXT,
       created_at TEXT NOT NULL
     )`
   ).run();
+
+  // Migrate older DBs that lack the policy columns
+  const userCols = db.prepare("PRAGMA table_info(users)").all().map((c: any) => c.name);
+  if (!userCols.includes("policy_accepted")) {
+    db.prepare("ALTER TABLE users ADD COLUMN policy_accepted INTEGER DEFAULT 0").run();
+  }
+  if (!userCols.includes("policy_accepted_at")) {
+    db.prepare("ALTER TABLE users ADD COLUMN policy_accepted_at TEXT").run();
+  }
 
   // Clinic doctors
   db.prepare(
@@ -382,14 +395,16 @@ export function createUser(input: Omit<User, "id" | "created_at" | "business_typ
     ...input,
     id: uuidv4(),
     business_type: null,
+    policy_accepted: input.policy_accepted ? 1 : 0,
+    policy_accepted_at: input.policy_accepted ? new Date().toISOString() : null,
     created_at: new Date().toISOString(),
   };
   database
     .prepare(
-      `INSERT INTO users (id, email, name, password, business_type, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO users (id, email, name, password, business_type, policy_accepted, policy_accepted_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(user.id, user.email, user.name, user.password, user.business_type, user.created_at);
+    .run(user.id, user.email, user.name, user.password, user.business_type, user.policy_accepted, user.policy_accepted_at, user.created_at);
   return user;
 }
 
