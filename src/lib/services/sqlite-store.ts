@@ -181,6 +181,18 @@ function getDb() {
     )`
   ).run();
 
+  // Contact messages
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS contact_messages (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      subject TEXT DEFAULT '',
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`
+  ).run();
+
   // Clinic doctors
   db.prepare(
     `CREATE TABLE IF NOT EXISTS clinic_doctors (
@@ -507,6 +519,25 @@ export function userHasReviewed(userId: string): boolean {
     .prepare("SELECT id FROM reviews WHERE user_id = ? AND status IN ('approved','pending') LIMIT 1")
     .get(userId);
   return !!row;
+}
+
+// ─────────────────────────────────────────────
+// Contact messages
+// ─────────────────────────────────────────────
+
+export function addContactMessage(
+  name: string,
+  email: string,
+  subject: string,
+  message: string
+): void {
+  const database = getDb();
+  database
+    .prepare(
+      `INSERT INTO contact_messages (id, name, email, subject, message, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .run(uuidv4(), name, email, subject, message, new Date().toISOString());
 }
 
 export function isBusinessPaused(userId: string): boolean {

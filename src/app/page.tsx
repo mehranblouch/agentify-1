@@ -212,9 +212,9 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="flex gap-6 text-sm text-text-secondary">
-            <Link href="#" className="hover:text-foreground">About</Link>
-            <Link href="#" className="hover:text-foreground">Docs</Link>
-            <Link href="#" className="hover:text-foreground">Contact</Link>
+            <Link href="/about" className="hover:text-foreground">About</Link>
+            <Link href="/docs" className="hover:text-foreground">Docs</Link>
+            <Link href="/contact" className="hover:text-foreground">Contact</Link>
           </div>
           <div className="text-sm text-text-secondary">
             &copy; {new Date().getFullYear()} Agentify
