@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Database, Smartphone, Shield } from "lucide-react";
+import ReviewsSection from "@/components/reviews-section";
 
 export default function LandingPage() {
   return (
@@ -14,7 +15,7 @@ export default function LandingPage() {
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-text-secondary">
             <Link href="#features" className="hover:text-foreground transition-colors">Features</Link>
             <Link href="#how-it-works" className="hover:text-foreground transition-colors">How It Works</Link>
-            <Link href="#demo" className="hover:text-foreground transition-colors">Live Demo</Link>
+            <Link href="#reviews" className="hover:text-foreground transition-colors">Reviews</Link>
             <Link href="#faq" className="hover:text-foreground transition-colors">FAQ</Link>
           </div>
           <div className="flex items-center gap-4">
@@ -177,83 +178,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* Demo Section */}
-        <section id="demo" className="py-20">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 text-secondary text-sm font-medium mb-4 border border-secondary/20">
-              Try It Right Now
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Meet Your New Assistant</h2>
-            <p className="text-text-secondary max-w-2xl mx-auto">
-              This is a real AI agent trained on a sample "City Medical Clinic". 
-              Ask it about appointments, timings, fees, or available doctors.
-            </p>
-          </div>
-          
-          <div className="max-w-md mx-auto bg-card border border-border rounded-2xl overflow-hidden shadow-2xl flex flex-col h-[500px]">
-            <div className="bg-border/50 p-4 flex items-center justify-between border-b border-border">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="text-2xl">🤖</div>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-card"></div>
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm">City Medical Clinic</h3>
-                  <p className="text-xs text-text-secondary">Replies instantly</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4">
-              <div className="bg-background border border-border rounded-2xl rounded-tl-sm p-3 max-w-[85%] text-sm self-start">
-                Welcome to City Medical Clinic! How can I help you today? 😊 You can ask me about our timings, doctors, fees, or how to book an appointment.
-              </div>
-              <div className="text-center text-xs text-text-secondary my-4">
-                (Demo mode: Type a message below to test)
-              </div>
-            </div>
-            <div className="p-4 border-t border-border bg-background">
-              <div className="flex items-center gap-2 bg-card border border-border rounded-xl p-2">
-                <input 
-                  type="text" 
-                  placeholder="Ask about fees or timings..." 
-                  className="flex-1 bg-transparent border-none outline-none text-sm px-2"
-                  disabled
-                />
-                <button disabled className="p-2 bg-primary rounded-lg text-white opacity-50">
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Testimonials */}
-        <section className="py-20">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Businesses Love Agentify</h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { name: "Dr. Ayesha Khan", location: "Lahore", text: "My patients book appointments at midnight without calling me. I wake up with confirmed bookings in my Google Sheet." },
-              { name: "Hassan Electronics", location: "Karachi", text: "Customers ask about stock and prices all day. My Google Sheet has all products. Agent answers everything automatically." },
-              { name: "QuickSend Courier", location: "Islamabad", text: "Customers track their own parcels now. I just update my tracking sheet. My phone doesn't ring 100 times daily." }
-            ].map((t, i) => (
-              <div key={i} className="bg-card border border-border rounded-2xl p-6 relative">
-                <div className="text-primary mb-4 text-sm">⭐⭐⭐⭐⭐</div>
-                <p className="text-sm text-text-secondary mb-6 leading-relaxed">"{t.text}"</p>
-                <div className="flex items-center gap-3 mt-auto">
-                  <div className="w-10 h-10 bg-border rounded-full flex items-center justify-center font-bold text-text-secondary">
-                    {t.name[0]}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm">{t.name}</h4>
-                    <p className="text-xs text-text-secondary">{t.location}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+        <ReviewsSection />
 
         {/* FAQ */}
         <section id="faq" className="py-20 max-w-3xl mx-auto">

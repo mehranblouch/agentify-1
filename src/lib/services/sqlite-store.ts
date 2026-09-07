@@ -83,6 +83,18 @@ export type Student = {
   created_at: string;
 };
 
+export type Review = {
+  id: string;
+  user_id: string;
+  name: string;
+  email: string;
+  business_type: "clinic" | "education" | null;
+  rating: number;
+  content: string;
+  status: "approved" | "pending" | "hidden";
+  created_at: string;
+};
+
 export type AttendanceLog = {
   id: string;
   user_id: string;
@@ -153,6 +165,21 @@ function getDb() {
   if (!userCols.includes("policy_accepted_at")) {
     db.prepare("ALTER TABLE users ADD COLUMN policy_accepted_at TEXT").run();
   }
+
+  // Reviews
+  db.prepare(
+    `CREATE TABLE IF NOT EXISTS reviews (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      business_type TEXT,
+      rating INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      status TEXT DEFAULT 'approved',
+      created_at TEXT NOT NULL
+    )`
+  ).run();
 
   // Clinic doctors
   db.prepare(
@@ -420,6 +447,66 @@ export function getUserById(id: string): User | null {
   const database = getDb();
   const row = database.prepare("SELECT * FROM users WHERE id = ?").get(id);
   return row ? (row as User) : null;
+}
+
+// ─────────────────────────────────────────────
+// Reviews
+// ─────────────────────────────────────────────
+
+export function addReview(
+  user: User,
+  rating: number,
+  content: string,
+  businessName?: string
+): Review {
+  const database = getDb();
+  const review: Review = {
+    id: uuidv4(),
+    user_id: user.id,
+    name: businessName?.trim() || user.name,
+    email: user.email,
+    business_type: user.business_type || null,
+    rating,
+    content,
+    status: "approved",
+    created_at: new Date().toISOString(),
+  };
+  database
+    .prepare(
+      `INSERT INTO reviews (id, user_id, name, email, business_type, rating, content, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    )
+    .run(
+      review.id,
+      review.user_id,
+      review.name,
+      review.email,
+      review.business_type,
+      review.rating,
+      review.content,
+      review.status,
+      review.created_at
+    );
+  return review;
+}
+
+export function getApprovedReviews(limit = 20): Review[] {
+  const database = getDb();
+  const rows = database
+    .prepare(
+      `SELECT * FROM reviews WHERE status = 'approved'
+       ORDER BY created_at DESC LIMIT ?`
+    )
+    .all(limit);
+  return rows as Review[];
+}
+
+export function userHasReviewed(userId: string): boolean {
+  const database = getDb();
+  const row = database
+    .prepare("SELECT id FROM reviews WHERE user_id = ? AND status IN ('approved','pending') LIMIT 1")
+    .get(userId);
+  return !!row;
 }
 
 export function isBusinessPaused(userId: string): boolean {
