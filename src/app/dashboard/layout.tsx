@@ -145,7 +145,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .catch(() => {
         sessionStorage.removeItem("agentify_current_user");
         router.replace("/login");
-      });
+      })
+      .finally(() => setIsLoading(false));
   }, [router, pathname]);
 
   useEffect(() => {
