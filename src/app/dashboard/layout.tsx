@@ -35,10 +35,25 @@ function ProfileInfo() {
   });
 
   useEffect(() => {
-    const fetchName = async () => {
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (res.status !== 200) return;
+        const data = await res.json();
+        if (!data.success || !data.name) return;
+        setName(data.name);
+        try {
+          const existing = sessionStorage.getItem("agentify_current_user");
+          const u = existing ? JSON.parse(existing) : {};
+          sessionStorage.setItem(
+            "agentify_current_user",
+            JSON.stringify({ ...u, id: data.id, email: data.email, name: data.name, businessType: data.business_type })
+          );
+        } catch {}
+      })
+      .catch(() => {});
+
+    const trySettings = async (userStr: string) => {
       try {
-        const userStr = sessionStorage.getItem("agentify_current_user");
-        if (!userStr) return;
         const user = JSON.parse(userStr);
         if (user.businessType === "education") {
           const res = await fetch(`/api/education/settings?userId=${user.id}`);
@@ -51,7 +66,8 @@ function ProfileInfo() {
         }
       } catch (e) {}
     };
-    fetchName();
+    const userStr = sessionStorage.getItem("agentify_current_user");
+    if (userStr) trySettings(userStr);
   }, []);
 
   return (
@@ -105,16 +121,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           router.replace("/login");
           return;
         }
-        // Keep sessionStorage in sync for UI display
+        // Keep sessionStorage in sync with server truth so the real account always shows
         if (data.business_type !== undefined) {
           const existing = sessionStorage.getItem("agentify_current_user");
+          let current: Record<string, unknown> = {};
           if (existing) {
-            try {
-              const u = JSON.parse(existing);
-              u.businessType = u.businessType || data.business_type;
-              sessionStorage.setItem("agentify_current_user", JSON.stringify(u));
-            } catch {}
+            try { current = JSON.parse(existing); } catch {}
           }
+          current.id = data.id;
+          current.email = data.email;
+          current.name = data.name;
+          current.businessType = data.business_type;
+          sessionStorage.setItem("agentify_current_user", JSON.stringify(current));
         }
         if (data.business_type === "education") {
           setNavItems([

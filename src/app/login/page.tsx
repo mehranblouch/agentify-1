@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -9,8 +9,31 @@ import { Bot, Mail, Lock, Loader2, ArrowRight, Eye, EyeOff } from "lucide-react"
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [authChecking, setAuthChecking] = useState(true);
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then(async (res) => {
+        if (res.status !== 200) return;
+        const data = await res.json();
+        if (!data.success) return;
+        sessionStorage.setItem(
+          "agentify_current_user",
+          JSON.stringify({ id: data.id, email: data.email, name: data.name, businessType: data.business_type })
+        );
+        if (data.business_type === "education") {
+          router.replace("/dashboard/education");
+        } else if (data.business_type === "clinic") {
+          router.replace("/dashboard");
+        } else {
+          router.replace("/onboarding");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setAuthChecking(false));
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +72,17 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (authChecking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-text-secondary text-sm font-black">Checking your account...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
