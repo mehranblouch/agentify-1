@@ -3,7 +3,7 @@ import { GoogleGenAI, createUserContent, createModelContent } from "@google/gena
 import { getClinicSettings, getEducationSettings, getAllAppointments, recordGroqKeyCall, type ClinicSettings } from "./sqlite-store";
 
 const GEMINI_MODEL = "gemini-3.8-flash";
-const GROQ_MODEL = "qwen/qwen3.8-27b";
+const GROQ_MODEL = "qwen/qwen-3.8-27b-instruct";
 
 const RETRYABLE_STATUSES = [429, 403, 500, 502, 503, 504];
 
